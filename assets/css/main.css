@@ -51,3 +51,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         border-radius: 4px;
     }
 }
+
+/* Evita que o overlay bloqueie cliques quando estiver oculto */
+#loading.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
