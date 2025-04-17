@@ -42,76 +42,132 @@ const CreditAnalysis = (function() {
   };
   
   // Inicialização
-  function init() {
-    // Verifica dados no localStorage
-    loadDataFromStorage();
-    
-    // Setup de eventos
-    setupEventListeners();
-    
-    // Inicializa validações
-    initValidation();
-    
-    // Inicializa autosave
-    initAutoSave();
+function init() {
+  // Verifica dados no localStorage
+  loadDataFromStorage();
+  
+  // Setup de eventos
+  setupEventListeners();
+  
+  // Inicializa validações
+  initValidation();
+  
+  // Inicializa autosave
+  initAutoSave();
+  
+  // Configura o leitor de simulação
+  setupSimulationReader();
+  
+  // Calcula valores iniciais
+  calculateDerivedValues();
+  
+  // Atualiza UI
+  updateUI();
+  
+  // Esconde overlay de carregamento
+  hideLoading();
+  
+  // Log de inicialização
+  console.log('CreditAnalysis v2.0 initialized');
+}
 
-    // Calcula valores iniciais
-    calculateDerivedValues();
-    
-    // Atualiza UI
-    updateUI();
-    
-    // Esconde overlay de carregamento
-    hideLoading();
-    
-    // Log de inicialização
-    console.log('CreditAnalysis v2.0 initialized');
+// Carrega dados do localStorage
+function loadDataFromStorage() {
+  const dataStr = localStorage.getItem('customerData');
+  const cpf = localStorage.getItem('customerCPF');
+  
+  if (!dataStr || !cpf) {
+    window.location.href = 'index.html';
+    return;
   }
   
-  // Carrega dados do localStorage
-  function loadDataFromStorage() {
-    const dataStr = localStorage.getItem('customerData');
-    const cpf = localStorage.getItem('customerCPF');
+  try {
+    state.formData = JSON.parse(dataStr);
+    state.originalData = JSON.parse(dataStr); // Backup original para comparações
     
-    if (!dataStr || !cpf) {
-      window.location.href = 'index.html';
+    // Preenche dados nos campos
+    populateFormFields();
+    
+    // Atualiza informações do header
+    updateHeaderInfo(cpf);
+  } catch (error) {
+    console.error('Error loading data:', error);
+    showNotification('Erro ao carregar dados', 'error');
+    // Redireciona após erro
+    setTimeout(() => window.location.href = 'index.html', 3000);
+  }
+}
+
+// Popula campos do formulário com os dados carregados
+function populateFormFields() {
+  // Popula dados pessoais
+  populatePersonalData();
+  
+  // Popula dados do imóvel e simulação
+  populatePropertySimData();
+  
+  // Popula dados de renda
+  populateIncomeData();
+  
+  // Popula dados da construtora
+  populateConstructorData();
+  
+  // Atualiza o resumo
+  updateSummary();
+}
+
+/**
+ * Configura o botão de leitura de simulação e integração com a função de extração
+ */
+function setupSimulationReader() {
+  const fileInput = document.getElementById('uploadSimulacao');
+  const readButton = document.getElementById('btn-ler-simulacao');
+  
+  if (!fileInput || !readButton) return;
+  
+  // Atualiza o estado do botão com base na seleção de arquivo
+  fileInput.addEventListener('change', function() {
+    // Habilita o botão apenas se um arquivo for selecionado
+    readButton.disabled = !this.files || this.files.length === 0;
+    
+    if (this.files && this.files.length > 0) {
+      // Atualiza o status para "aguardando processamento"
+      Integration.updateSimulationStatus('waiting', 'Arquivo selecionado. Clique em "Ler Simulação"');
+    } else {
+      // Esconde o status se não houver arquivo
+      const statusElement = document.getElementById('simulacao-status');
+      if (statusElement) statusElement.classList.add('hidden');
+    }
+  });
+  
+  // Configura o evento de clique no botão
+  readButton.addEventListener('click', async function() {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showNotification('Selecione um arquivo de simulação primeiro', 'warning');
       return;
     }
     
     try {
-      state.formData = JSON.parse(dataStr);
-      state.originalData = JSON.parse(dataStr); // Backup original para comparações
+      // Desabilita o botão durante o processamento
+      readButton.disabled = true;
       
-      // Preenche dados nos campos
-      populateFormFields();
+      // Processa o arquivo
+      const simulationData = await Integration.readSimulationFile(fileInput.files[0]);
       
-      // Atualiza informações do header
-      updateHeaderInfo(cpf);
+      // Preenche os campos do formulário com os dados extraídos
+      fillSimulationFields(simulationData);
+      
+      // Notifica o sucesso
+      showNotification('Simulação processada com sucesso!', 'success');
     } catch (error) {
-      console.error('Error loading data:', error);
-      showNotification('Erro ao carregar dados', 'error');
-      // Redireciona após erro
-      setTimeout(() => window.location.href = 'index.html', 3000);
+      console.error('Erro ao processar simulação:', error);
+      showNotification('Erro ao processar simulação: ' + error.message, 'error');
+    } finally {
+      // Reabilita o botão
+      readButton.disabled = false;
     }
-  }
-  
-  // Popula campos do formulário com os dados carregados
-  function populateFormFields() {
-    // Popula dados pessoais
-    populatePersonalData();
-    
-    // Popula dados do imóvel e simulação
-    populatePropertySimData();
-    
-    // Popula dados de renda
-    populateIncomeData();
-    
-    // Popula dados da construtora
-    populateConstructorData();
-    
-    // Atualiza o resumo
-    updateSummary();
-  }
+  });
+}
   
   // Popula dados pessoais
   function populatePersonalData() {
