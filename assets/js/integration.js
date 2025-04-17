@@ -8,20 +8,111 @@ const Integration = (function() {
   'use strict';
 
   // Configurações da integração
-  const config = {
-    apiBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test/a5dc5ed8-e52a-4ae3-94c4-ed6bd88ada3b',
-    endpoints: {
-      consultaCliente: '/consulta-cliente',
-      getEndereco: '/get-endereco',
-      analiseCredito: '/analise-credito',
-      debitoFgts: '/debito-fgts'
-    },
-    timeouts: {
-      default: 30000, // 30 segundos
-      submit: 60000    // 60 segundos
-    },
-    retryAttempts: 2
-  };
+  /**
+ * Envia o arquivo de simulação para o n8n/mostqi e obtém os dados extraídos
+ * @param {File} file - Arquivo de simulação para análise
+ * @returns {Promise<Object>} - Promise que resolve com os dados extraídos da simulação
+ */
+async function readSimulationFile(file) {
+  try {
+    // Verifica se o arquivo foi fornecido
+    if (!file) {
+      throw new Error('Nenhum arquivo fornecido');
+    }
+    
+    // Atualiza status visual
+    updateSimulationStatus('processing', 'Processando arquivo...');
+    
+    // Prepara a URL da API
+    const url = `${config.apiBaseUrl}${config.endpoints.readSimulation}`;
+    
+    // Prepara o FormData para envio do arquivo
+    const formData = new FormData();
+    formData.append('simulationFile', file);
+    
+    // Configura timeout mais longo para processamento de arquivos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.timeouts.simulation);
+    
+    console.log('Enviando arquivo para processamento:', file.name);
+    
+    // Faz a requisição
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+    
+    // Limpa o timeout
+    clearTimeout(timeoutId);
+    
+    // Verifica a resposta
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao processar arquivo: ${response.status} - ${errorText}`);
+    }
+    
+    // Processa os dados retornados
+    const data = await response.json();
+    console.log('Dados extraídos da simulação:', data);
+    
+    // Atualiza status visual
+    updateSimulationStatus('success', 'Dados extraídos com sucesso!');
+    
+    return data;
+  } catch (error) {
+    console.error('Erro ao ler arquivo de simulação:', error);
+    
+    // Atualiza status visual
+    updateSimulationStatus('error', error.message || 'Erro ao processar arquivo');
+    
+    throw error;
+  }
+}
+
+/**
+ * Atualiza o status visual do processamento da simulação
+ * @param {string} status - Status atual (waiting, processing, success, error)
+ * @param {string} message - Mensagem a ser exibida
+ */
+function updateSimulationStatus(status, message) {
+  const statusElement = document.getElementById('simulacao-status');
+  const statusDot = statusElement?.querySelector('span:first-child');
+  const statusText = statusElement?.querySelector('.status-text');
+  
+  if (!statusElement || !statusDot || !statusText) return;
+  
+  // Remove classes anteriores
+  statusDot.classList.remove(
+    'bg-gray-400', 'bg-blue-500', 'bg-green-500', 'bg-red-500',
+    'animate-pulse'
+  );
+  
+  // Exibe o elemento de status
+  statusElement.classList.remove('hidden');
+  statusElement.classList.add('flex');
+  
+  // Aplica estilo de acordo com o status
+  switch (status) {
+    case 'waiting':
+      statusDot.classList.add('bg-gray-400');
+      break;
+    case 'processing':
+      statusDot.classList.add('bg-blue-500', 'animate-pulse');
+      break;
+    case 'success':
+      statusDot.classList.add('bg-green-500');
+      break;
+    case 'error':
+      statusDot.classList.add('bg-red-500');
+      break;
+    default:
+      statusDot.classList.add('bg-gray-400');
+  }
+  
+  // Atualiza o texto
+  statusText.textContent = message;
+}
 
   // Cache para armazenar resultados de APIs
   const apiCache = new Map();
@@ -491,15 +582,17 @@ const Integration = (function() {
 
   // API pública do módulo
   return {
-    fetchCustomerData,
-    fetchEndereco,
-    submitAnalysis,
-    submitFGTSDebito,
-    showNotification,
-    saveAnalysisData,
-    loadAnalysisData,
-    clearCache
-  };
+  fetchCustomerData,
+  fetchEndereco,
+  submitAnalysis,
+  submitFGTSDebito,
+  readSimulationFile,  // Nova função adicionada
+  updateSimulationStatus,  // Nova função adicionada
+  showNotification,
+  saveAnalysisData,
+  loadAnalysisData,
+  clearCache
+};
 })();
 
 // Exporta para uso global
