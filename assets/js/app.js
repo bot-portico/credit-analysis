@@ -1,227 +1,174 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Verificar se temos dados de cliente no localStorage
-    const customerDataStr = localStorage.getItem('customerData');
-    const customerCPF = localStorage.getItem('customerCPF');
-    
-    if (!customerDataStr || !customerCPF) {
-        // Redirecionar para a página inicial se não houver dados
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    const customerData = JSON.parse(customerDataStr);
-    
-    // Preencher dados básicos no cabeçalho
-    document.getElementById('header-customer-name').textContent = customerData.personal.nome;
-    document.getElementById('header-customer-cpf').textContent = customerCPF;
-    document.getElementById('customer-initials').textContent = customerData.personal.nome.charAt(0);
-    
-    // Preencher dados no resumo lateral
-    document.getElementById('side-nome').textContent = customerData.personal.nome;
-    document.getElementById('side-cpf').textContent = customerCPF;
-    
-    // Preencher formulário com dados do cliente
-    populateFormWithCustomerData(customerData, customerCPF);
-    
-    // Configurar navegação entre abas
-    setupTabNavigation();
-    
-    // Configurar validações e cálculos dinâmicos
-    setupFormValidations();
-    
-    // Configurar botões de envio
-    setupSubmitButtons();
-});
+// assets/js/app.js
 
-/**
- * Preenche o formulário com os dados do cliente
- */
-function populateFormWithCustomerData(data, cpf) {
-    // Preencher dados pessoais
-    document.getElementById('nome').value = data.personal.nome;
-    document.getElementById('cpf').value = cpf;
-    document.getElementById('dataNascimento').value = data.personal.dataNascimento;
-    document.getElementById('rg').value = data.personal.rg;
-    document.getElementById('email').value = data.personal.email;
-    document.getElementById('telefone').value = data.personal.telefone;
-    
-    // Preencher dados do imóvel
-    document.getElementById('valorImovel').value = formatMoney(data.property.valorImovel.toString());
-    document.getElementById('valorCompraVenda').value = formatMoney(data.property.valorCompraVenda.toString());
-    document.getElementById('subsidio').value = formatMoney(data.property.subsidio.toString());
-    document.getElementById('valorFinanciamento').value = formatMoney(data.property.valorFinanciamento.toString());
-    
-    document.getElementById('utilizaFGTS').checked = data.property.utilizaFGTS;
-    if (data.property.utilizaFGTS) {
-        document.getElementById('fgts-fields').classList.remove('hidden');
-        document.getElementById('valorFGTS').value = formatMoney(data.property.valorFGTS.toString());
-    }
-    
-    // Outros campos seriam preenchidos de forma semelhante
-    
-    // Preencher o resumo
-    updateSummary();
+document.addEventListener('DOMContentLoaded', initApp);
+
+function initApp() {
+  // Verifica dados no localStorage
+  const dataStr = localStorage.getItem('customerData');
+  const cpf = localStorage.getItem('customerCPF');
+  if (!dataStr || !cpf) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const data = JSON.parse(dataStr);
+
+  // Header
+  document.getElementById('header-customer-name').textContent = data.personal.proponentes[0].nome;
+  document.getElementById('header-customer-cpf').textContent = cpf;
+  document.getElementById('customer-initials').textContent = data.personal.proponentes[0].nome.charAt(0);
+
+  // Preenche blocos
+  populatePersonal(data.personal.proponentes, cpf);
+  populatePropertySim(data.property);
+  populateSimulation(data.simulation);
+  populateIncome(data.personal.proponentes);
+  populateConstructor(data.constructor);
+
+  // Busca endereço do empreendimento
+  fetchEndereco(data.constructor.empreendimento);
+
+  // Setup
+  setupTabNavigation();
+  setupNextArrow();
+  setupFormValidations();
+  setupSubmitButtons();
+
+  // Esconde overlay
+  document.getElementById('loading')?.classList.add('hidden');
 }
 
-/**
- * Configura navegação entre abas
- */
-function setupTabNavigation() {
-    const tabs = document.querySelectorAll('#section-tabs button');
-    const sections = document.querySelectorAll('.section-content');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetSection = tab.getAttribute('data-section');
-            
-            // Atualizar abas
-            tabs.forEach(t => {
-                if (t.getAttribute('data-section') === targetSection) {
-                    t.classList.add('bg-blue-100', 'text-blue-700', 'font-medium');
-                    t.classList.remove('text-gray-700', 'hover:bg-gray-100');
-                } else {
-                    t.classList.remove('bg-blue-100', 'text-blue-700', 'font-medium');
-                    t.classList.add('text-gray-700', 'hover:bg-gray-100');
-                }
-            });
-            
-            // Atualizar seções
-            sections.forEach(section => {
-                if (section.id === 'section-' + targetSection) {
-                    section.classList.remove('hidden');
-                } else {
-                    section.classList.add('hidden');
-                }
-            });
-            
-            // Atualizar barra de progresso
-            updateProgressBar(targetSection);
-        });
-    });
+function populatePersonal(proponentes, cpf) {
+  // Primeiro proponente
+  const p1 = proponentes[0];
+  document.getElementById('nome').value = p1.nome;
+  document.getElementById('cpf').value = cpf;
+  document.getElementById('profissao1').value = p1.profissao;
+  document.getElementById('renda1').value = formatMoney(p1.renda.toString());
+
+  // Segundo proponente, se existir
+  if (proponentes.length > 1) {
+    const p2 = proponentes[1];
+    const template = document.getElementById('proponente-template');
+    const grid = document.querySelector('#section-personal .grid');
+    const clone = template.content.cloneNode(true);
+    grid.appendChild(clone);
+    document.getElementById('nome2').value = p2.nome;
+    document.getElementById('cpf2').value = p2.cpf;
+    document.getElementById('profissao2').value = p2.profissao;
+    document.getElementById('renda2').value = formatMoney(p2.renda.toString());
+  }
 }
 
-/**
- * Atualiza a barra de progresso com base na seção ativa
- */
-function updateProgressBar(activeSection) {
-    const sections = ['personal', 'property', 'simulation', 'income', 'constructor', 'summary'];
-    const index = sections.indexOf(activeSection);
-    const progressPercentage = (index / (sections.length - 1)) * 100;
-    
-    document.getElementById('progress-bar').style.width = `${progressPercentage}%`;
+function populatePropertySim(prop) {
+  document.getElementById('valorCompraVenda').value = formatMoney(prop.valorCompraVenda.toString());
+  document.getElementById('subsidio').value = formatMoney(prop.subsidio.toString());
+  document.getElementById('valorFGTS').value = formatMoney(prop.valorFGTS.toString());
+  document.getElementById('valorFinanciamento').value = formatMoney(prop.valorFinanciamento.toString());
+  calculateRecursosProprios();
 }
 
-/**
- * Configura validações e cálculos dinâmicos do formulário
- */
+function populateSimulation(sim) {
+  if (!sim) return;
+  document.getElementById('statusAnalise').value = sim.statusAnalise || '';
+  document.getElementById('prazoFinanciamento').value = sim.prazo || '';
+  document.getElementById('dataVencimento').value = sim.dataVencimento || '';
+  document.getElementById('sistemaAmortizacao').value = sim.sistemaAmortizacao || '';
+  document.getElementById('indexador').value = sim.indexador || '';
+  document.getElementById('parcelaInicial').value = formatMoney(sim.parcela.toString());
+  document.getElementById('financiaCustas').checked = sim.financiaCustas;
+  toggleCustasField();
+  if (sim.financiaCustas) document.getElementById('valorCustas').value = formatMoney(sim.valorCustas.toString());
+  document.getElementById('valorSiric').value = formatMoney(sim.valorSiric.toString());
+  document.getElementById('modalidade').value = sim.modalidade || '';
+}
+
+function populateIncome(proponentes) {
+  const total = proponentes.reduce((sum, p) => sum + (p.renda || 0), 0);
+  document.getElementById('rendaFamiliar').value = formatMoney(total.toString());
+}
+
+function populateConstructor(cons) {
+  document.getElementById('nomeConstrutora').value = cons.nome;
+  document.getElementById('empreendimento').value = cons.empreendimento;
+  document.getElementById('unidade').value = cons.unidade;
+  document.getElementById('blocoTorre').value = cons.bloco;
+}
+
+function fetchEndereco(empreendimento) {
+  fetch(`https://suportico.app.n8n.cloud/webhook-test/get-endereco?empreendimento=${encodeURIComponent(empreendimento)}`)
+    .then(r => r.json())
+    .then(json => {
+      document.getElementById('enderecoEmpreendimento').value = json.enderecoCompleto;
+    })
+    .catch(console.error);
+}
+
+function calculateRecursosProprios() {
+  const cv = parseMoneyToNumber(document.getElementById('valorCompraVenda').value);
+  const sub = parseMoneyToNumber(document.getElementById('subsidio').value);
+  const fgts = parseMoneyToNumber(document.getElementById('valorFGTS').value);
+  const fin = parseMoneyToNumber(document.getElementById('valorFinanciamento').value);
+  const recursos = cv - sub - fgts - fin;
+  document.getElementById('recursosProprios').value = formatMoney(recursos.toString());
+}
+
 function setupFormValidations() {
-    // Mostrar/ocultar campos de FGTS quando o checkbox for clicado
-    const fgtsCheckbox = document.getElementById('utilizaFGTS');
-    const fgtsFields = document.getElementById('fgts-fields');
-    
-    fgtsCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            fgtsFields.classList.remove('hidden');
-        } else {
-            fgtsFields.classList.add('hidden');
-            document.getElementById('valorFGTS').value = '0,00';
-        }
-        
-        // Recalcular valor de financiamento
-        calculateFinancingValue();
-    });
-    
-    // Calcular valor de financiamento quando valores mudarem
-    const valorCompraVenda = document.getElementById('valorCompraVenda');
-    const subsidio = document.getElementById('subsidio');
-    const valorFGTS = document.getElementById('valorFGTS');
-    
-    [valorCompraVenda, subsidio, valorFGTS].forEach(input => {
-        if (input) {
-            input.addEventListener('input', calculateFinancingValue);
-        }
-    });
+  document.getElementById('valorCompraVenda').addEventListener('input', calculateRecursosProprios);
+  document.getElementById('subsidio').addEventListener('input', calculateRecursosProprios);
+  document.getElementById('valorFGTS').addEventListener('input', calculateRecursosProprios);
+  // Toggle custas
+  document.getElementById('financiaCustas').addEventListener('change', toggleCustasField);
 }
 
-/**
- * Calcula o valor de financiamento com base nos outros valores
- */
-function calculateFinancingValue() {
-    const valorCV = parseMoneyToNumber(document.getElementById('valorCompraVenda').value);
-    const valorSubsidio = parseMoneyToNumber(document.getElementById('subsidio').value);
-    
-    let valorFGTS = 0;
-    if (document.getElementById('utilizaFGTS').checked) {
-        valorFGTS = parseMoneyToNumber(document.getElementById('valorFGTS').value);
-    }
-    
-    // Valor Financiamento = Valor Compra e Venda - Subsídio - FGTS
-    const valorFinanciamento = valorCV - valorSubsidio - valorFGTS;
-    
-    document.getElementById('valorFinanciamento').value = formatMoney(valorFinanciamento.toString());
-    
-    // Atualizar resumo
-    updateSummary();
+function toggleCustasField() {
+  const box = document.getElementById('custas-field');
+  if (document.getElementById('financiaCustas').checked) box.classList.remove('hidden');
+  else box.classList.add('hidden');
 }
 
-/**
- * Atualiza o resumo com os valores atuais do formulário
- */
-function updateSummary() {
-    // Atualizar resumo lateral e seção de resumo
-    document.getElementById('summary-nome').textContent = document.getElementById('nome').value;
-    document.getElementById('summary-cpf').textContent = document.getElementById('cpf').value;
-    // Outros campos do resumo seriam atualizados de forma semelhante
+function setupTabNavigation() {
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(btn => btn.addEventListener('click', () => switchSection(btn.dataset.section)));
 }
 
-/**
- * Configura os botões de envio
- */
+function switchSection(section) {
+  document.querySelectorAll('main section').forEach(sec => sec.classList.add('hidden'));
+  document.getElementById(`section-${section}`).classList.remove('hidden');
+  updateProgressBar();
+  // Atualiza active tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.section === section));
+}
+
+function setupNextArrow() {
+  document.getElementById('next-section').addEventListener('click', () => {
+    const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+    const currentIndex = tabs.findIndex(b => b.classList.contains('active'));
+    const next = tabs[currentIndex+1] || tabs[0];
+    switchSection(next.dataset.section);
+  });
+}
+
+function updateProgressBar() {
+  const sections = document.querySelectorAll('main section');
+  const total = sections.length;
+  const visible = Array.from(sections).filter(sec => !sec.classList.contains('hidden')).length;
+  const percent = ((total - visible) / (total - 1)) * 100;
+  document.getElementById('progress-bar').style.width = `${percent}%`;
+}
+
 function setupSubmitButtons() {
-    const mainSubmitButton = document.getElementById('submit-button');
-    const sideSubmitButton = document.getElementById('side-submit-button');
-    
-    const submitFunction = function() {
-        document.getElementById('loading').classList.remove('hidden');
-        
-        // Coletar todos os dados do formulário
-        const formData = {
-            personal: {
-                nome: document.getElementById('nome').value,
-                cpf: document.getElementById('cpf').value,
-                dataNascimento: document.getElementById('dataNascimento').value,
-                rg: document.getElementById('rg').value,
-                email: document.getElementById('email').value,
-                telefone: document.getElementById('telefone').value
-            },
-            property: {
-                valorImovel: parseMoneyToNumber(document.getElementById('valorImovel').value),
-                valorCompraVenda: parseMoneyToNumber(document.getElementById('valorCompraVenda').value),
-                subsidio: parseMoneyToNumber(document.getElementById('subsidio').value),
-                valorFinanciamento: parseMoneyToNumber(document.getElementById('valorFinanciamento').value),
-                utilizaFGTS: document.getElementById('utilizaFGTS').checked
-            }
-            // Outros dados seriam coletados de forma semelhante
-        };
-        
-        if (formData.property.utilizaFGTS) {
-            formData.property.valorFGTS = parseMoneyToNumber(document.getElementById('valorFGTS').value);
-        }
-        
-        // Enviar dados
-        submitAnalysis(formData)
-            .then(response => {
-                console.log('Resposta:', response);
-                // Redirecionar para página de sucesso
-                window.location.href = 'success.html';
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                alert('Ocorreu um erro ao enviar a análise. Por favor, tente novamente.');
-                document.getElementById('loading').classList.add('hidden');
-            });
-    };
-    
-    mainSubmitButton.addEventListener('click', submitFunction);
-    sideSubmitButton.addEventListener('click', submitFunction);
+  const btns = [document.getElementById('submit-button'), document.getElementById('side-submit-button')];
+  btns.forEach(btn => btn?.addEventListener('click', submitAnalysisHandler));
+  document.getElementById('debitofgts')?.addEventListener('click', () => window.location.href = 'debito-fgts.html');
+}
+
+function submitAnalysisHandler() {
+  document.getElementById('loading')?.classList.remove('hidden');
+  // coletar dados simplificado
+  const formData = { personal: {}, property: {}, simulation: {}, income: {}, constructor: {} };
+  // ... montando o formData conforme IDs
+  submitAnalysis(formData)
+    .then(() => window.location.href = 'success.html')
+    .catch(e => { alert(e.message); document.getElementById('loading')?.classList.add('hidden'); });
 }
