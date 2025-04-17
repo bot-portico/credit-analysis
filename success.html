@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Crédito - Sucesso</title>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div class="flex flex-col items-center justify-center min-h-screen p-6">
+        <div class="w-full max-w-md text-center">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-8">
+                    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Análise Enviada com Sucesso!</h2>
+                    <p class="text-gray-600 mb-6">
+                        Sua análise de crédito para <span id="success-customer-name">o cliente</span> foi enviada com sucesso para o Ploomes e o SAP.
+                    </p>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <p class="text-sm text-gray-500 mb-1">Número do protocolo</p>
+                        <p class="text-lg font-medium text-gray-800" id="protocol-number">AC-0000</p>
+                    </div>
+                    
+                    <div class="flex flex-col space-y-3">
+                        <button
+                            id="new-analysis-btn"
+                            class="w-full py-3 px-4 rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 transition-all"
+                        >
+                            Nova Análise
+                        </button>
+                        <button
+                            id="ploomes-btn"
+                            class="w-full py-3 px-4 rounded-lg text-blue-700 font-medium border border-blue-300 hover:bg-blue-50 transition-all"
+                        >
+                            Ver Detalhes no Ploomes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Recuperar dados do cliente do localStorage
+            const customerData = JSON.parse(localStorage.getItem('customerData'));
+            
+            if (customerData && customerData.personal && customerData.personal.nome) {
+                document.getElementById('success-customer-name').textContent = customerData.personal.nome;
+            }
+            
+            // Gerar número de protocolo aleatório
+            const protocolNumber = 'AC-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            document.getElementById('protocol-number').textContent = protocolNumber;
+            
+            // Configurar botões
+            document.getElementById('new-analysis-btn').addEventListener('click', function() {
+                localStorage.removeItem('customerData');
+                localStorage.removeItem('customerCPF');
+                window.location.href = 'index.html';
+            });
+            
+            document.getElementById('ploomes-btn').addEventListener('click', function() {
+                // Em produção, aqui redirecionaria para o Ploomes com o ID correto
+                alert('Em um ambiente de produção, este botão redirecionaria para o registro específico no Ploomes CRM.');
+            });
+        });
+    </script>
+</body>
+</html>
