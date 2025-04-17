@@ -42,132 +42,79 @@ const CreditAnalysis = (function() {
   };
   
   // Inicialização
-function init() {
-  // Verifica dados no localStorage
-  loadDataFromStorage();
-  
-  // Setup de eventos
-  setupEventListeners();
-  
-  // Inicializa validações
-  initValidation();
-  
-  // Inicializa autosave
-  initAutoSave();
-  
-  // Configura o leitor de simulação
-  setupSimulationReader();
-  
-  // Calcula valores iniciais
-  calculateDerivedValues();
-  
-  // Atualiza UI
-  updateUI();
-  
-  // Esconde overlay de carregamento
-  hideLoading();
-  
-  // Log de inicialização
-  console.log('CreditAnalysis v2.0 initialized');
-}
-
-// Carrega dados do localStorage
-function loadDataFromStorage() {
-  const dataStr = localStorage.getItem('customerData');
-  const cpf = localStorage.getItem('customerCPF');
-  
-  if (!dataStr || !cpf) {
-    window.location.href = 'index.html';
-    return;
+  function init() {
+    // Verifica dados no localStorage
+    loadDataFromStorage();
+    
+    // Setup de eventos
+    setupEventListeners();
+    
+    // Inicializa validações
+    initValidation();
+    
+    // Inicializa autosave
+    initAutoSave();
+    
+    // Configura o leitor de simulação
+    setupSimulationReader();
+    
+    // Calcula valores iniciais
+    calculateDerivedValues();
+    
+    // Atualiza UI
+    updateUI();
+    
+    // Esconde overlay de carregamento
+    hideLoading();
+    
+    // Log de inicialização
+    console.log('CreditAnalysis v2.0 initialized');
   }
   
-  try {
-    state.formData = JSON.parse(dataStr);
-    state.originalData = JSON.parse(dataStr); // Backup original para comparações
+  // Carrega dados do localStorage
+  function loadDataFromStorage() {
+    const dataStr = localStorage.getItem('customerData');
+    const cpf = localStorage.getItem('customerCPF');
     
-    // Preenche dados nos campos
-    populateFormFields();
-    
-    // Atualiza informações do header
-    updateHeaderInfo(cpf);
-  } catch (error) {
-    console.error('Error loading data:', error);
-    showNotification('Erro ao carregar dados', 'error');
-    // Redireciona após erro
-    setTimeout(() => window.location.href = 'index.html', 3000);
-  }
-}
-
-// Popula campos do formulário com os dados carregados
-function populateFormFields() {
-  // Popula dados pessoais
-  populatePersonalData();
-  
-  // Popula dados do imóvel e simulação
-  populatePropertySimData();
-  
-  // Popula dados de renda
-  populateIncomeData();
-  
-  // Popula dados da construtora
-  populateConstructorData();
-  
-  // Atualiza o resumo
-  updateSummary();
-}
-
-/**
- * Configura o botão de leitura de simulação e integração com a função de extração
- */
-function setupSimulationReader() {
-  const fileInput = document.getElementById('uploadSimulacao');
-  const readButton = document.getElementById('btn-ler-simulacao');
-  
-  if (!fileInput || !readButton) return;
-  
-  // Atualiza o estado do botão com base na seleção de arquivo
-  fileInput.addEventListener('change', function() {
-    // Habilita o botão apenas se um arquivo for selecionado
-    readButton.disabled = !this.files || this.files.length === 0;
-    
-    if (this.files && this.files.length > 0) {
-      // Atualiza o status para "aguardando processamento"
-      Integration.updateSimulationStatus('waiting', 'Arquivo selecionado. Clique em "Ler Simulação"');
-    } else {
-      // Esconde o status se não houver arquivo
-      const statusElement = document.getElementById('simulacao-status');
-      if (statusElement) statusElement.classList.add('hidden');
-    }
-  });
-  
-  // Configura o evento de clique no botão
-  readButton.addEventListener('click', async function() {
-    if (!fileInput.files || fileInput.files.length === 0) {
-      showNotification('Selecione um arquivo de simulação primeiro', 'warning');
+    if (!dataStr || !cpf) {
+      window.location.href = 'index.html';
       return;
     }
     
     try {
-      // Desabilita o botão durante o processamento
-      readButton.disabled = true;
+      state.formData = JSON.parse(dataStr);
+      state.originalData = JSON.parse(dataStr); // Backup original para comparações
       
-      // Processa o arquivo
-      const simulationData = await Integration.readSimulationFile(fileInput.files[0]);
+      // Preenche dados nos campos
+      populateFormFields();
       
-      // Preenche os campos do formulário com os dados extraídos
-      fillSimulationFields(simulationData);
-      
-      // Notifica o sucesso
-      showNotification('Simulação processada com sucesso!', 'success');
+      // Atualiza informações do header
+      updateHeaderInfo(cpf);
     } catch (error) {
-      console.error('Erro ao processar simulação:', error);
-      showNotification('Erro ao processar simulação: ' + error.message, 'error');
-    } finally {
-      // Reabilita o botão
-      readButton.disabled = false;
+      console.error('Error loading data:', error);
+      showNotification('Erro ao carregar dados', 'error');
+      // Redireciona após erro
+      setTimeout(() => window.location.href = 'index.html', 3000);
     }
-  });
-}
+  }
+  
+  // Popula campos do formulário com os dados carregados
+  function populateFormFields() {
+    // Popula dados pessoais
+    populatePersonalData();
+    
+    // Popula dados do imóvel e simulação
+    populatePropertySimData();
+    
+    // Popula dados de renda
+    populateIncomeData();
+    
+    // Popula dados da construtora
+    populateConstructorData();
+    
+    // Atualiza o resumo
+    updateSummary();
+  }
   
   // Popula dados pessoais
   function populatePersonalData() {
@@ -240,158 +187,6 @@ function setupSimulationReader() {
       toggleCustasFields(true);
       setFieldValue('valorCustas', formatMoney(sim.valorCustas?.toString() || '0'));
     }
-
-    /**
- * Configura o botão de leitura de simulação e integração com a função de extração
- */
-function setupSimulationReader() {
-  const fileInput = document.getElementById('uploadSimulacao');
-  const readButton = document.getElementById('btn-ler-simulacao');
-  
-  if (!fileInput || !readButton) return;
-  
-  // Atualiza o estado do botão com base na seleção de arquivo
-  fileInput.addEventListener('change', function() {
-    // Habilita o botão apenas se um arquivo for selecionado
-    readButton.disabled = !this.files || this.files.length === 0;
-    
-    if (this.files && this.files.length > 0) {
-      // Atualiza o status para "aguardando processamento"
-      Integration.updateSimulationStatus('waiting', 'Arquivo selecionado. Clique em "Ler Simulação"');
-    } else {
-      // Esconde o status se não houver arquivo
-      const statusElement = document.getElementById('simulacao-status');
-      if (statusElement) statusElement.classList.add('hidden');
-    }
-  });
-  
-  // Configura o evento de clique no botão
-  readButton.addEventListener('click', async function() {
-    if (!fileInput.files || fileInput.files.length === 0) {
-      Integration.showNotification('Selecione um arquivo de simulação primeiro', 'warning');
-      return;
-    }
-    
-    try {
-      // Desabilita o botão durante o processamento
-      readButton.disabled = true;
-      
-      // Processa o arquivo
-      const simulationData = await Integration.readSimulationFile(fileInput.files[0]);
-      
-      // Preenche os campos do formulário com os dados extraídos
-      fillSimulationFields(simulationData);
-      
-      // Notifica o sucesso
-      Integration.showNotification('Simulação processada com sucesso!', 'success');
-    } catch (error) {
-      console.error('Erro ao processar simulação:', error);
-      Integration.showNotification('Erro ao processar simulação: ' + error.message, 'error');
-    } finally {
-      // Reabilita o botão
-      readButton.disabled = false;
-    }
-  });
-}
-
-/**
- * Preenche os campos do formulário com os dados extraídos da simulação
- * @param {Object} data - Dados extraídos da simulação
- */
-function fillSimulationFields(data) {
-  // Mapeamento dos campos da API para os IDs dos campos no formulário
-  const fieldMapping = {
-    // Campos da simulação
-    'valorFinanciamento': 'valorFinanciamento',
-    'prazoFinanciamento': 'prazoFinanciamento',
-    'sistemaAmortizacao': 'sistemaAmortizacao',
-    'indexador': 'indexador',
-    'valorPrimeiraParcela': 'valorPrimeiraParcela',
-    'valorParceladoSIRIC': 'valorParceladoSIRIC',
-    'modalidadeFinanciamento': 'modalidadeFinanciamento',
-    'dataVencimento': 'dataVencimentoAnalise',
-    'valorCustas': 'valorCustas',
-    'financiamentoCustas': 'financiamentoCustas',
-    'valorImovel': 'valorCompraVenda',
-    'rendaFamiliar': 'rendaFamiliarTotal'
-  };
-  
-  // Preenche cada campo disponível
-  for (const [apiField, formField] of Object.entries(fieldMapping)) {
-    if (data[apiField] !== undefined) {
-      const element = document.getElementById(formField);
-      
-      if (element) {
-        // Caso específico para checkbox
-        if (element.type === 'checkbox') {
-          element.checked = !!data[apiField];
-          
-          // Dispara evento para mostrar/esconder campos relacionados
-          const event = new Event('change');
-          element.dispatchEvent(event);
-        } 
-        // Caso específico para campos monetários
-        else if (element.classList.contains('money-input') && typeof data[apiField] === 'number') {
-          element.value = Formatter.formatMoney(data[apiField], false);
-        }
-        // Outros campos
-        else {
-          element.value = data[apiField];
-        }
-        
-        // Destaca o campo preenchido brevemente
-        highlightUpdatedField(element);
-        
-        // Dispara evento de mudança para acionar cálculos automáticos
-        const event = new Event('change');
-        element.dispatchEvent(event);
-      }
-    }
-  }
-  
-  // Se houver dados de financiamento de custas, trata especialmente
-  if (data.financiamentoCustas) {
-    const custasCheckbox = document.getElementById('financiamentoCustas');
-    if (custasCheckbox) {
-      custasCheckbox.checked = true;
-      
-      // Torna o campo de custas visível
-      const custasFields = document.getElementById('custas-fields');
-      if (custasFields) {
-        custasFields.classList.remove('hidden');
-      }
-      
-      // Preenche o valor das custas se disponível
-      if (data.valorCustas !== undefined) {
-        const valorCustasElement = document.getElementById('valorCustas');
-        if (valorCustasElement) {
-          valorCustasElement.value = Formatter.formatMoney(data.valorCustas, false);
-          highlightUpdatedField(valorCustasElement);
-        }
-      }
-    }
-  }
-  
-  // Recalcula os valores derivados
-  calculateRecursosProprios();
-  updateSummary();
-}
-
-/**
- * Destaca brevemente um campo que foi atualizado automaticamente
- * @param {HTMLElement} element - Elemento a ser destacado
- */
-function highlightUpdatedField(element) {
-  if (!element) return;
-  
-  // Adiciona classe de destaque
-  element.classList.add('bg-blue-50', 'transition-colors', 'duration-500');
-  
-  // Remove o destaque após alguns segundos
-  setTimeout(() => {
-    element.classList.remove('bg-blue-50');
-  }, 2000);
-}
     
     // Calcula recursos próprios
     calculateRecursosProprios();
@@ -625,6 +420,158 @@ function highlightUpdatedField(element) {
         }
       });
     }
+  }
+  
+  /**
+   * Configura o botão de leitura de simulação e integração com a função de extração
+   */
+  function setupSimulationReader() {
+    const fileInput = document.getElementById('uploadSimulacao');
+    const readButton = document.getElementById('btn-ler-simulacao');
+    
+    if (!fileInput || !readButton) return;
+    
+    // Atualiza o estado do botão com base na seleção de arquivo
+    fileInput.addEventListener('change', function() {
+      // Habilita o botão apenas se um arquivo for selecionado
+      readButton.disabled = !this.files || this.files.length === 0;
+      
+      if (this.files && this.files.length > 0) {
+        // Atualiza o status para "aguardando processamento"
+        Integration.updateSimulationStatus('waiting', 'Arquivo selecionado. Clique em "Ler Simulação"');
+      } else {
+        // Esconde o status se não houver arquivo
+        const statusElement = document.getElementById('simulacao-status');
+        if (statusElement) statusElement.classList.add('hidden');
+      }
+    });
+    
+    // Configura o evento de clique no botão
+    readButton.addEventListener('click', async function() {
+      if (!fileInput.files || fileInput.files.length === 0) {
+        Integration.showNotification('Selecione um arquivo de simulação primeiro', 'warning');
+        return;
+      }
+      
+      try {
+        // Desabilita o botão durante o processamento
+        readButton.disabled = true;
+        
+        // Processa o arquivo
+        const simulationData = await Integration.readSimulationFile(fileInput.files[0]);
+        
+        // Preenche os campos do formulário com os dados extraídos
+        fillSimulationFields(simulationData);
+        
+        // Notifica o sucesso
+        Integration.showNotification('Simulação processada com sucesso!', 'success');
+      } catch (error) {
+        console.error('Erro ao processar simulação:', error);
+        Integration.showNotification('Erro ao processar simulação: ' + error.message, 'error');
+      } finally {
+        // Reabilita o botão
+        readButton.disabled = false;
+      }
+    });
+  }
+
+  /**
+   * Preenche os campos do formulário com os dados extraídos da simulação
+   * @param {Object} data - Dados extraídos da simulação
+   */
+  function fillSimulationFields(data) {
+    // Mapeamento dos campos da API para os IDs dos campos no formulário
+    const fieldMapping = {
+      // Campos da simulação
+      'valorFinanciamento': 'valorFinanciamento',
+      'prazoFinanciamento': 'prazoFinanciamento',
+      'sistemaAmortizacao': 'sistemaAmortizacao',
+      'indexador': 'indexador',
+      'valorPrimeiraParcela': 'valorPrimeiraParcela',
+      'valorParceladoSIRIC': 'valorParceladoSIRIC',
+      'modalidadeFinanciamento': 'modalidadeFinanciamento',
+      'dataVencimento': 'dataVencimentoAnalise',
+      'valorCustas': 'valorCustas',
+      'financiamentoCustas': 'financiamentoCustas',
+      'valorImovel': 'valorCompraVenda',
+      'rendaFamiliar': 'rendaFamiliarTotal'
+    };
+    
+    // Preenche cada campo disponível
+    for (const [apiField, formField] of Object.entries(fieldMapping)) {
+      if (data[apiField] !== undefined) {
+        const element = document.getElementById(formField);
+        
+        if (element) {
+          // Caso específico para checkbox
+          if (element.type === 'checkbox') {
+            element.checked = !!data[apiField];
+            
+            // Dispara evento para mostrar/esconder campos relacionados
+            const event = new Event('change');
+            element.dispatchEvent(event);
+          } 
+          // Caso específico para campos monetários
+          else if (element.classList.contains('money-input') && typeof data[apiField] === 'number') {
+            element.value = Formatter.formatMoney(data[apiField], false);
+          }
+          // Outros campos
+          else {
+            element.value = data[apiField];
+          }
+          
+          // Destaca o campo preenchido brevemente
+          highlightUpdatedField(element);
+          
+          // Dispara evento de mudança para acionar cálculos automáticos
+          const event = new Event('change');
+          element.dispatchEvent(event);
+        }
+      }
+    }
+    
+    // Se houver dados de financiamento de custas, trata especialmente
+    if (data.financiamentoCustas) {
+      const custasCheckbox = document.getElementById('financiamentoCustas');
+      if (custasCheckbox) {
+        custasCheckbox.checked = true;
+        
+        // Torna o campo de custas visível
+        const custasFields = document.getElementById('custas-fields');
+        if (custasFields) {
+          custasFields.classList.remove('hidden');
+        }
+        
+        // Preenche o valor das custas se disponível
+        if (data.valorCustas !== undefined) {
+          const valorCustasElement = document.getElementById('valorCustas');
+          if (valorCustasElement) {
+            valorCustasElement.value = Formatter.formatMoney(data.valorCustas, false);
+            highlightUpdatedField(valorCustasElement);
+          }
+        }
+      }
+    }
+    
+    // Recalcula os valores derivados
+    calculateRecursosProprios();
+    updateSummary();
+  }
+
+  /**
+   * Destaca brevemente um campo que foi atualizado automaticamente
+   * @param {HTMLElement} element - Elemento a ser destacado
+   */
+  function highlightUpdatedField(element) {
+    if (!element) return;
+    
+    // Adiciona classe de destaque
+    element.classList.add('bg-blue-50', 'transition-colors', 'duration-500');
+    
+    // Remove o destaque após alguns segundos
+    setTimeout(() => {
+      element.classList.remove('bg-blue-50');
+    }, 2000);
   }
   
   // Configura botões de submissão
