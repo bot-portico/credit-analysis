@@ -9,7 +9,7 @@ const Integration = (function() {
 
   // Configurações da integração
   const config = {
-    apiBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test',
+    apiBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test/a5dc5ed8-e52a-4ae3-94c4-ed6bd88ada3b',
     endpoints: {
       consultaCliente: '/consulta-cliente',
       getEndereco: '/get-endereco',
