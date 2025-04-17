@@ -1,6 +1,6 @@
 /**
  * integration.js - Sistema de Análise de Crédito
- * Integração com APIs externas via n8n
+ * Integração com n8n e APIs externas
  */
 
 // Utilizando padrão de módulo para organização e encapsulamento
@@ -10,6 +10,12 @@ const Integration = (function() {
   // Configurações da integração
   const config = {
     apiBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test',
+    endpoints: {
+      consultaCliente: '/consulta-cliente',
+      getEndereco: '/get-endereco',
+      analiseCredito: '/analise-credito',
+      debitoFgts: '/debito-fgts'
+    },
     timeouts: {
       default: 30000, // 30 segundos
       submit: 60000    // 60 segundos
@@ -40,19 +46,21 @@ const Integration = (function() {
       // Mostra indicador de carregamento
       document.getElementById('loading')?.classList.remove('hidden');
       
-      // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/cliente?cpf=${cpfNumerico}`;
+      // Prepara a URL da API (endpoint do webhook n8n)
+      const url = `${config.apiBaseUrl}${config.endpoints.consultaCliente}`;
       
       // Configura o timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), config.timeouts.default);
       
-      // Faz a requisição
+      // Faz a requisição - NOTA: Enviamos o CPF no corpo como JSON, conforme esperado pelo webhook
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
+        body: JSON.stringify({ cpf: cpfNumerico }),
         signal: controller.signal
       });
       
@@ -65,7 +73,7 @@ const Integration = (function() {
         throw new Error(`Erro ao buscar dados do cliente: ${response.status} - ${errorText}`);
       }
       
-      // Processa os dados
+      // Processa os dados - já vem formatado do n8n conforme o formato esperado pelo frontend
       const data = await response.json();
       
       // Armazena no cache
@@ -156,7 +164,7 @@ const Integration = (function() {
   }
 
   /**
-   * Busca o endereço do empreendimento via API
+   * Busca o endereço do empreendimento via API n8n
    * @param {string} empreendimento - Nome do empreendimento
    * @returns {Promise<Object>} - Promise que resolve com o endereço
    */
@@ -180,11 +188,15 @@ const Integration = (function() {
       }
       
       // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/get-endereco?empreendimento=${encodeURIComponent(empreendimento)}`;
+      const url = `${config.apiBaseUrl}${config.endpoints.getEndereco}`;
       
-      // Faz a requisição
+      // Faz a requisição - enviando o nome do empreendimento como JSON no corpo
       const response = await fetch(url, {
-        method: 'GET'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ empreendimento })
       });
       
       // Verifica a resposta
@@ -220,7 +232,7 @@ const Integration = (function() {
   }
 
   /**
-   * Envia os dados do formulário para o webhook do n8n
+   * Envia os dados do formulário para o webhook do n8n (análise de crédito)
    * @param {Object} formData - Dados coletados do formulário
    * @returns {Promise<Object>} - Promise que resolve com a resposta JSON do n8n
    */
@@ -230,7 +242,7 @@ const Integration = (function() {
       document.getElementById('loading')?.classList.remove('hidden');
       
       // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/analise-credito`;
+      const url = `${config.apiBaseUrl}${config.endpoints.analiseCredito}`;
       
       // Adiciona timestamp de envio
       const dataToSend = {
@@ -240,6 +252,8 @@ const Integration = (function() {
           origin: window.location.origin
         }
       };
+      
+      console.log('Enviando dados para análise:', dataToSend);
       
       // Configura o timeout
       const controller = new AbortController();
@@ -266,6 +280,7 @@ const Integration = (function() {
       
       // Processa os dados
       const data = await response.json();
+      console.log('Resposta da análise:', data);
       return data;
     } catch (error) {
       // Em caso de timeout, tenta novamente
@@ -324,6 +339,55 @@ const Integration = (function() {
   }
 
   /**
+   * Envia solicitação de débito FGTS para o n8n
+   * @param {Object} fgtsData - Dados do débito FGTS
+   * @returns {Promise<Object>} - Promise que resolve com a resposta do n8n
+   */
+  async function submitFGTSDebito(fgtsData) {
+    try {
+      // Mostra indicador de carregamento
+      document.getElementById('loading')?.classList.remove('hidden');
+      
+      // Prepara a URL da API
+      const url = `${config.apiBaseUrl}${config.endpoints.debitoFgts}`;
+      
+      // Adiciona timestamp de envio
+      const dataToSend = {
+        ...fgtsData,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          origin: window.location.origin
+        }
+      };
+      
+      // Faz a requisição
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSend)
+      });
+      
+      // Verifica a resposta
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro ao enviar débito FGTS: ${response.status} - ${errorText}`);
+      }
+      
+      // Processa os dados
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao enviar débito FGTS:', error);
+      throw error;
+    } finally {
+      // Esconde indicador de carregamento
+      document.getElementById('loading')?.classList.add('hidden');
+    }
+  }
+
+  /**
    * Mostra uma notificação na tela
    * @param {string} message - Mensagem da notificação
    * @param {string} type - Tipo de notificação (success, error, warning, info)
@@ -374,184 +438,40 @@ const Integration = (function() {
   }
 
   /**
-   * Busca dados de simulação para campos calculados
-   * @param {Object} params - Parâmetros da simulação
-   * @returns {Promise<Object>} - Resultados da simulação
+   * Salva os dados da análise no localStorage para uso em outras páginas
+   * @param {Object} analysisData - Dados completos da análise
    */
-  async function fetchSimulationData(params) {
+  function saveAnalysisData(analysisData) {
     try {
-      // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/simulacao`;
+      localStorage.setItem('customerData', JSON.stringify(analysisData));
       
-      // Faz a requisição
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(params)
-      });
-      
-      // Verifica a resposta
-      if (!response.ok) {
-        throw new Error(`Erro na simulação: ${response.status}`);
+      // Salva também o CPF principal para referência rápida
+      if (analysisData.personal && 
+          analysisData.personal.proponentes && 
+          analysisData.personal.proponentes.length > 0) {
+        localStorage.setItem('customerCPF', analysisData.personal.proponentes[0].cpf);
       }
       
-      // Processa os dados
-      return await response.json();
+      return true;
     } catch (error) {
-      console.error('Erro ao buscar simulação:', error);
-      
-      // Retorna valores estimados para não bloquear o fluxo
-      return {
-        valorParcela: params.valorFinanciamento * 0.01, // Estimativa simplificada de 1% do valor
-        isEstimativa: true
-      };
+      console.error('Erro ao salvar dados no localStorage:', error);
+      return false;
     }
   }
 
   /**
-   * Busca construtoras e empreendimentos
-   * @returns {Promise<Object>} - Lista de construtoras e empreendimentos
+   * Carrega os dados da análise do localStorage
+   * @returns {Object|null} - Dados da análise ou null se não existir
    */
-  async function fetchConstructors() {
+  function loadAnalysisData() {
     try {
-      // Verifica o cache
-      const cacheKey = 'constructors_list';
-      if (apiCache.has(cacheKey)) {
-        return apiCache.get(cacheKey);
-      }
+      const dataStr = localStorage.getItem('customerData');
+      if (!dataStr) return null;
       
-      // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/construtoras`;
-      
-      // Faz a requisição
-      const response = await fetch(url);
-      
-      // Verifica a resposta
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar construtoras: ${response.status}`);
-      }
-      
-      // Processa os dados
-      const data = await response.json();
-      
-      // Armazena no cache
-      apiCache.set(cacheKey, data);
-      
-      return data;
+      return JSON.parse(dataStr);
     } catch (error) {
-      console.error('Erro ao buscar construtoras:', error);
-      
-      // Retorna dados mockados para desenvolvimento
-      return {
-        construtoras: [
-          {
-            id: 1,
-            nome: 'Construtora Horizonte',
-            empreendimentos: [
-              { id: 101, nome: 'Residencial Villa Verde' },
-              { id: 102, nome: 'Edifício Montanhas' }
-            ]
-          },
-          {
-            id: 2,
-            nome: 'Incorporadora Solaris',
-            empreendimentos: [
-              { id: 201, nome: 'Condomínio Solar das Águas' },
-              { id: 202, nome: 'Parque Residence' }
-            ]
-          },
-          {
-            id: 3,
-            nome: 'MRV Engenharia',
-            empreendimentos: [
-              { id: 301, nome: 'Spazio Liberty' },
-              { id: 302, nome: 'Grand Reserve' }
-            ]
-          }
-        ]
-      };
-    }
-  }
-
-  /**
-   * Busca unidades disponíveis de um empreendimento
-   * @param {number} empreendimentoId - ID do empreendimento
-   * @returns {Promise<Array>} - Lista de unidades disponíveis
-   */
-  async function fetchUnidades(empreendimentoId) {
-    try {
-      // Verifica o cache
-      const cacheKey = `units_${empreendimentoId}`;
-      if (apiCache.has(cacheKey)) {
-        return apiCache.get(cacheKey);
-      }
-      
-      // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/unidades?empreendimento=${empreendimentoId}`;
-      
-      // Faz a requisição
-      const response = await fetch(url);
-      
-      // Verifica a resposta
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar unidades: ${response.status}`);
-      }
-      
-      // Processa os dados
-      const data = await response.json();
-      
-      // Armazena no cache
-      apiCache.set(cacheKey, data);
-      
-      return data;
-    } catch (error) {
-      console.error('Erro ao buscar unidades:', error);
-      
-      // Retorna dados mockados para desenvolvimento
-      return {
-        unidades: [
-          { id: 1, bloco: 'A', numero: '101', area: 68, valor: 320000 },
-          { id: 2, bloco: 'A', numero: '102', area: 68, valor: 325000 },
-          { id: 3, bloco: 'A', numero: '201', area: 68, valor: 335000 },
-          { id: 4, bloco: 'B', numero: '101', area: 72, valor: 350000 },
-          { id: 5, bloco: 'B', numero: '102', area: 72, valor: 355000 }
-        ]
-      };
-    }
-  }
-
-  /**
-   * Verifica o status de débito do FGTS
-   * @param {string} cpf - CPF do cliente
-   * @returns {Promise<Object>} - Status do débito do FGTS
-   */
-  async function checkFGTSDebitoStatus(cpf) {
-    try {
-      // Prepara a URL da API
-      const url = `${config.apiBaseUrl}/fgts-status?cpf=${cpf.replace(/\D/g, '')}`;
-      
-      // Faz a requisição
-      const response = await fetch(url);
-      
-      // Verifica a resposta
-      if (!response.ok) {
-        throw new Error(`Erro ao verificar status do FGTS: ${response.status}`);
-      }
-      
-      // Processa os dados
-      return await response.json();
-    } catch (error) {
-      console.error('Erro ao verificar status do FGTS:', error);
-      
-      // Retorna dados mockados para desenvolvimento
-      return {
-        cpf: cpf,
-        status: 'PENDENTE',
-        saldoDisponivel: 42000,
-        dataConsulta: new Date().toISOString().split('T')[0]
-      };
+      console.error('Erro ao carregar dados do localStorage:', error);
+      return null;
     }
   }
 
@@ -574,12 +494,11 @@ const Integration = (function() {
     fetchCustomerData,
     fetchEndereco,
     submitAnalysis,
-    fetchSimulationData,
-    fetchConstructors,
-    fetchUnidades,
-    checkFGTSDebitoStatus,
-    clearCache,
-    showNotification
+    submitFGTSDebito,
+    showNotification,
+    saveAnalysisData,
+    loadAnalysisData,
+    clearCache
   };
 })();
 
