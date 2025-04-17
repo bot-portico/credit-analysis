@@ -1,8 +1,7 @@
 /**
- * Simula busca de dados do cliente com base no CPF
- * Em produção, esta função faria uma requisição real ao Ploomes
- * @param {string} cpf - CPF do cliente
- * @returns {Promise} - Promise com os dados do cliente
+ * Busca dados do cliente via webhook n8n/Ploomes
+ * @param {string} cpf - CPF formatado (000.000.000-00)
+ * @returns {Promise<Object>} - Promise que resolve com os dados do cliente
  */
 function fetchCustomerData(cpf) {
     return new Promise((resolve, reject) => {
@@ -58,35 +57,25 @@ function fetchCustomerData(cpf) {
 }
 
 /**
- * Simula envio de dados para o Ploomes e SAP
- * Em produção, esta função enviaria os dados reais
- * @param {Object} formData - Dados do formulário
- * @returns {Promise} - Promise com resultado do envio
+ * Envia os dados do formulário para o webhook do n8n
+ * @param {Object} formData - Dados coletados do formulário
+ * @returns {Promise} - Promise que resolve com a resposta JSON do n8n
  */
 function submitAnalysis(formData) {
-    return new Promise((resolve, reject) => {
-        // Simulação de atraso na resposta (como uma chamada real de API)
-        setTimeout(() => {
-            console.log('Dados enviados:', formData);
-            
-            // Em produção, esta seria uma chamada real à API
-            // fetch('https://sua-api-n8n.com/webhook/analise-credito', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json'
-            //     },
-            //     body: JSON.stringify(formData)
-            // })
-            
-            // Simulação de sucesso
-            resolve({
-                success: true,
-                message: 'Análise enviada com sucesso!',
-                protocol: 'AC-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-            });
-            
-            // Simular erro (para teste)
-            // reject(new Error('Erro ao enviar análise'));
-        }, 2000);
+    return fetch('https://suportico.app.n8n.cloud/webhook-test/analise-credito', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    })
+    .then(async response => {
+      if (!response.ok) {
+        // captura status e texto de erro, se houver
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text}`);
+      }
+      return response.json();
     });
-}
+  }
+  
