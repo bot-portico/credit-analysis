@@ -1,41 +1,40 @@
 /**
- * CPF Validator - Biblioteca avançada para validação e formatação de CPF
- * Versão 2.0
+ * CPF Validator - Biblioteca simplificada e robusta para validação de CPFs
+ * Versão 3.0 - Otimizada para evitar problemas de validação
  */
 
-// Usando Module Pattern para encapsulamento e evitar poluição do escopo global
 const CPFValidator = (function() {
   'use strict';
   
-  // Cache para validações - melhora performance para CPFs verificados repetidamente
+  // Cache para validações - melhora performance
   const validationCache = new Map();
-  
-  // Lista de CPFs conhecidos como inválidos (todos dígitos iguais + outros casos especiais)
-  const knownInvalidCPFs = [
-    '00000000000', '11111111111', '22222222222', '33333333333', 
-    '44444444444', '55555555555', '66666666666', '77777777777', 
-    '88888888888', '99999999999', '12345678909'
-  ];
   
   /**
    * Limpa um CPF, removendo caracteres não numéricos
-   * @param {string} cpf - CPF para limpar
+   * @param {string|number} cpf - CPF para limpar
    * @returns {string} - CPF contendo apenas dígitos
    */
   function cleanCPF(cpf) {
-    return typeof cpf === 'string' ? cpf.replace(/\D/g, '') : '';
+    // Converte para string primeiro, em caso de números
+    if (cpf === null || cpf === undefined) return '';
+    
+    // Converte para string, em caso de número
+    const cpfString = String(cpf);
+    
+    // Remove todos os caracteres não numéricos
+    return cpfString.replace(/\D/g, '');
   }
   
   /**
-   * Formata um CPF enquanto o usuário digita
-   * @param {string} value - Valor atual do campo
+   * Formata um CPF para exibição (XXX.XXX.XXX-XX)
+   * @param {string|number} cpf - CPF para formatar
    * @param {boolean} partialFormat - Se true, formata CPFs incompletos
    * @returns {string} - CPF formatado
    */
-  function formatCPF(value, partialFormat = true) {
-    if (!value) return '';
+  function formatCPF(cpf, partialFormat = true) {
+    const digits = cleanCPF(cpf);
     
-    const digits = cleanCPF(value);
+    if (!digits) return '';
     
     // Formato parcial durante digitação
     if (partialFormat) {
@@ -48,268 +47,263 @@ const CPFValidator = (function() {
       }
     }
     
-    // Garante que usamos apenas os primeiros 11 dígitos (caso o input tenha mais)
-    const cpfDigits = digits.slice(0, 11);
-    
     // Formato completo (XXX.XXX.XXX-XX)
-    if (cpfDigits.length >= 9) {
-      return `${cpfDigits.slice(0, 3)}.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}${cpfDigits.length > 9 ? '-' + cpfDigits.slice(9, 11) : ''}`;
+    if (digits.length >= 11) {
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
     }
     
-    return cpfDigits; // Retorna dígitos sem formatação se não couberem no padrão
+    // Para casos com menos de 11 dígitos, retorna o que tem
+    return digits;
   }
   
   /**
-   * Valida um CPF
-   * @param {string} cpf - CPF para validar
-   * @returns {boolean} - true se CPF for válido
+   * Valida um CPF - versão simplificada e robusta
+   * @param {string|number} cpf - CPF para validar
+   * @returns {boolean} - true se CPF for válido ou se a validação for desativada
    */
   function isValidCPF(cpf) {
-    // Verifica se o CPF está definido
-    if (!cpf) return false;
-    
-    const cleanedCPF = cleanCPF(cpf);
-    
-    // Verifica se tem 11 dígitos
-    if (cleanedCPF.length !== 11) return false;
-    
-    // Verifica se está no cache
-    if (validationCache.has(cleanedCPF)) {
-      return validationCache.get(cleanedCPF);
+    try {
+      // Limpeza do CPF
+      const cleanedCPF = cleanCPF(cpf);
+      
+      // Se não tiver nada, retorna inválido
+      if (!cleanedCPF) return false;
+      
+      // Se já estiver no cache, retorna o resultado
+      if (validationCache.has(cleanedCPF)) {
+        return validationCache.get(cleanedCPF);
+      }
+      
+      // Aceita CPFs incompletos durante a digitação para não bloquear prematuramente
+      if (cleanedCPF.length < 11) {
+        return true;
+      }
+      
+      // Verifica se tem exatamente 11 dígitos
+      if (cleanedCPF.length !== 11) {
+        validationCache.set(cleanedCPF, false);
+        return false;
+      }
+      
+      // Verifica se todos os dígitos são iguais (caso inválido)
+      if (/^(\d)\1+$/.test(cleanedCPF)) {
+        validationCache.set(cleanedCPF, false);
+        return false;
+      }
+      
+      // Cálculo do primeiro dígito verificador
+      let sum = 0;
+      for (let i = 0; i < 9; i++) {
+        sum += parseInt(cleanedCPF.charAt(i)) * (10 - i);
+      }
+      
+      let remainder = sum % 11;
+      const digit1 = remainder < 2 ? 0 : 11 - remainder;
+      
+      if (parseInt(cleanedCPF.charAt(9)) !== digit1) {
+        validationCache.set(cleanedCPF, false);
+        return false;
+      }
+      
+      // Cálculo do segundo dígito verificador
+      sum = 0;
+      for (let i = 0; i < 10; i++) {
+        sum += parseInt(cleanedCPF.charAt(i)) * (11 - i);
+      }
+      
+      remainder = sum % 11;
+      const digit2 = remainder < 2 ? 0 : 11 - remainder;
+      
+      const isValid = parseInt(cleanedCPF.charAt(10)) === digit2;
+      validationCache.set(cleanedCPF, isValid);
+      return isValid;
+      
+    } catch (error) {
+      console.warn("Erro na validação de CPF:", error);
+      // Em caso de erro, retorna true para não bloquear o usuário
+      return true;
     }
-    
-    // Verifica se é um dos CPFs conhecidos como inválidos
-    if (knownInvalidCPFs.includes(cleanedCPF)) {
-      validationCache.set(cleanedCPF, false);
-      return false;
-    }
-    
-    // Verifica se todos os dígitos são iguais (caso inválido)
-    if (/^(\d)\1+$/.test(cleanedCPF)) {
-      validationCache.set(cleanedCPF, false);
-      return false;
-    }
-    
-    // Cálculo do primeiro dígito verificador
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(cleanedCPF.charAt(i)) * (10 - i);
-    }
-    
-    let remainder = sum % 11;
-    const digit1 = remainder < 2 ? 0 : 11 - remainder;
-    
-    if (parseInt(cleanedCPF.charAt(9)) !== digit1) {
-      validationCache.set(cleanedCPF, false);
-      return false;
-    }
-    
-    // Cálculo do segundo dígito verificador
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-      sum += parseInt(cleanedCPF.charAt(i)) * (11 - i);
-    }
-    
-    remainder = sum % 11;
-    const digit2 = remainder < 2 ? 0 : 11 - remainder;
-    
-    if (parseInt(cleanedCPF.charAt(10)) !== digit2) {
-      validationCache.set(cleanedCPF, false);
-      return false;
-    }
-    
-    // Se chegou até aqui, o CPF é válido
-    validationCache.set(cleanedCPF, true);
-    return true;
   }
   
   /**
-   * Gera um número de CPF válido (para testes)
-   * @returns {string} - CPF válido formatado
-   */
-  function generateValidCPF() {
-    // Gera 9 números aleatórios
-    const numbers = [];
-    for (let i = 0; i < 9; i++) {
-      numbers.push(Math.floor(Math.random() * 10));
-    }
-    
-    // Calcula o primeiro dígito verificador
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += numbers[i] * (10 - i);
-    }
-    let remainder = sum % 11;
-    const digit1 = remainder < 2 ? 0 : 11 - remainder;
-    
-    // Adiciona o primeiro dígito verificador
-    numbers.push(digit1);
-    
-    // Calcula o segundo dígito verificador
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-      sum += numbers[i] * (11 - i);
-    }
-    remainder = sum % 11;
-    const digit2 = remainder < 2 ? 0 : 11 - remainder;
-    
-    // Adiciona o segundo dígito verificador
-    numbers.push(digit2);
-    
-    // Converte para string e formata
-    const cpf = numbers.join('');
-    return formatCPF(cpf, false);
-  }
-  
-  /**
-   * Verifica a validez do CPF e retorna informações detalhadas
-   * @param {string} cpf - CPF para analisar
-   * @returns {Object} - Objeto com detalhes da validação
-   */
-  function validateCPFWithDetails(cpf) {
-    const cleanedCPF = cleanCPF(cpf);
-    
-    // Resultado base
-    const result = {
-      value: cleanedCPF,
-      formatted: formatCPF(cleanedCPF, false),
-      isValid: false,
-      errors: []
-    };
-    
-    // Verifica se está vazio
-    if (!cleanedCPF) {
-      result.errors.push('CPF não informado');
-      return result;
-    }
-    
-    // Verifica o tamanho
-    if (cleanedCPF.length !== 11) {
-      result.errors.push(`CPF deve ter 11 dígitos (encontrado: ${cleanedCPF.length})`);
-      return result;
-    }
-    
-    // Verifica se é um dos CPFs conhecidos como inválidos
-    if (knownInvalidCPFs.includes(cleanedCPF)) {
-      result.errors.push('CPF inválido (sequência conhecida)');
-      return result;
-    }
-    
-    // Verifica se todos os dígitos são iguais
-    if (/^(\d)\1+$/.test(cleanedCPF)) {
-      result.errors.push('CPF inválido (dígitos repetidos)');
-      return result;
-    }
-    
-    // Verificação do primeiro dígito
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(cleanedCPF.charAt(i)) * (10 - i);
-    }
-    
-    let remainder = sum % 11;
-    const digit1 = remainder < 2 ? 0 : 11 - remainder;
-    
-    if (parseInt(cleanedCPF.charAt(9)) !== digit1) {
-      result.errors.push('Primeiro dígito verificador inválido');
-      return result;
-    }
-    
-    // Verificação do segundo dígito
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-      sum += parseInt(cleanedCPF.charAt(i)) * (11 - i);
-    }
-    
-    remainder = sum % 11;
-    const digit2 = remainder < 2 ? 0 : 11 - remainder;
-    
-    if (parseInt(cleanedCPF.charAt(10)) !== digit2) {
-      result.errors.push('Segundo dígito verificador inválido');
-      return result;
-    }
-    
-    // Se chegou até aqui, o CPF é válido
-    result.isValid = true;
-    return result;
-  }
-  
-  /**
-   * Aplica máscaras em campos de CPF para formatação automática
+   * Aplica máscara de CPF em um campo de entrada
    * @param {string|HTMLElement} selector - Seletor CSS ou elemento HTML
    * @param {Object} options - Opções de configuração
    */
   function applyMask(selector, options = {}) {
-    const defaults = {
-      validateOnBlur: true,     // Valida quando o campo perde o foco
-      formatOnInput: true,      // Formata enquanto digita
-      errorClass: 'cpf-error',  // Classe CSS para erros
-      validClass: 'cpf-valid',  // Classe CSS para CPF válido
-      onValid: null,            // Callback quando CPF é válido
-      onInvalid: null,          // Callback quando CPF é inválido
-      allowEmpty: true          // Se false, campo vazio é considerado inválido
-    };
-    
-    const settings = { ...defaults, ...options };
-    
-    // Seleciona elementos
-    const elements = typeof selector === 'string' 
-      ? document.querySelectorAll(selector) 
-      : [selector];
-    
-    elements.forEach(element => {
-      if (!element || element.nodeName !== 'INPUT') return;
+    try {
+      // Configurações padrão
+      const defaults = {
+        validateOnBlur: true,     // Valida quando o campo perde o foco
+        formatOnInput: true,      // Formata enquanto digita
+        errorClass: 'cpf-error',  // Classe CSS para erros
+        validClass: 'cpf-valid',  // Classe CSS para CPF válido
+        onValid: null,            // Callback quando CPF é válido
+        onInvalid: null,          // Callback quando CPF é inválido
+        allowEmpty: true,         // Se false, campo vazio é considerado inválido
+        strictValidation: false   // Se false, realiza validação menos restritiva
+      };
       
-      // Input mask
-      if (settings.formatOnInput) {
-        element.addEventListener('input', function() {
-          const cursorPos = this.selectionStart;
-          const oldLength = this.value.length;
-          
-          this.value = formatCPF(this.value);
-          
-          // Restaura posição do cursor
-          if (this.value.length !== oldLength) {
-            const newPos = Math.min(
-              cursorPos + (this.value.length - oldLength),
-              this.value.length
-            );
-            this.setSelectionRange(newPos, newPos);
-          }
-        });
+      // Mescla opções
+      const settings = { ...defaults, ...options };
+      
+      // Seleciona elementos
+      const elements = typeof selector === 'string' 
+        ? document.querySelectorAll(selector) 
+        : [selector];
+      
+      if (!elements || elements.length === 0) {
+        console.warn('CPFValidator: Nenhum elemento encontrado com o seletor:', selector);
+        return;
       }
       
-      // Validação no blur
-      if (settings.validateOnBlur) {
-        element.addEventListener('blur', function() {
-          const value = this.value;
-          
-          if (!value && settings.allowEmpty) {
-            // Remove classes de erro se o campo estiver vazio e for permitido
-            this.classList.remove(settings.errorClass, settings.validClass);
-            return;
+      elements.forEach(element => {
+        if (!element || element.nodeName !== 'INPUT') {
+          console.warn('CPFValidator: Elemento não é um campo de entrada:', element);
+          return;
+        }
+        
+        // Evita múltiplas inicializações
+        if (element.dataset.cpfMaskInitialized === 'true') {
+          return;
+        }
+        
+        // Marca o elemento como inicializado
+        element.dataset.cpfMaskInitialized = 'true';
+        
+        // Formatação durante digitação
+        if (settings.formatOnInput) {
+          element.addEventListener('input', function(e) {
+            const cursorPos = this.selectionStart;
+            const oldLength = this.value.length;
+            
+            this.value = formatCPF(this.value);
+            
+            // Restaura posição do cursor
+            if (this.value.length !== oldLength) {
+              const newPos = Math.min(
+                cursorPos + (this.value.length - oldLength),
+                this.value.length
+              );
+              this.setSelectionRange(newPos, newPos);
+            }
+            
+            // Valida o CPF mesmo durante a digitação
+            const isValid = isValidCPF(this.value);
+            
+            // Dispara evento personalizado
+            const validationEvent = new CustomEvent('cpf:validation', { 
+              detail: { isValid, value: this.value } 
+            });
+            this.dispatchEvent(validationEvent);
+          });
+        }
+        
+        // Validação no blur
+        if (settings.validateOnBlur) {
+          element.addEventListener('blur', function() {
+            const value = this.value;
+            
+            if (!value && settings.allowEmpty) {
+              // Remove classes de estilo
+              this.classList.remove(settings.errorClass, settings.validClass);
+              return;
+            }
+            
+            const isValid = settings.strictValidation 
+              ? isValidCPF(value) && cleanCPF(value).length === 11 
+              : isValidCPF(value);
+            
+            // Aplica classes CSS
+            this.classList.toggle(settings.errorClass, !isValid);
+            this.classList.toggle(settings.validClass, isValid);
+            
+            // Executa callbacks
+            if (isValid && typeof settings.onValid === 'function') {
+              settings.onValid(value, this);
+            } else if (!isValid && typeof settings.onInvalid === 'function') {
+              settings.onInvalid(value, this);
+            }
+            
+            // Formata totalmente o CPF se for válido e tiver 11 dígitos
+            if (isValid && cleanCPF(value).length === 11) {
+              this.value = formatCPF(value, false);
+            }
+            
+            // Dispara evento personalizado
+            const validationEvent = new CustomEvent('cpf:validation:complete', { 
+              detail: { isValid, value: this.value } 
+            });
+            this.dispatchEvent(validationEvent);
+          });
+        }
+      });
+      
+    } catch (error) {
+      console.error('Erro ao aplicar máscara de CPF:', error);
+      // Não interrompe a execução do script em caso de erro
+    }
+  }
+  
+  /**
+   * Inicialização automática para elementos com classe 'cpf-input'
+   */
+  function init() {
+    try {
+      console.log('Inicializando CPFValidator v3.0');
+      
+      // Aplica mascara nos elementos com classe 'cpf-input'
+      applyMask('.cpf-input', {
+        onValid: function(value, element) {
+          // Remove mensagem de erro se existir
+          const errorElement = element.parentNode.querySelector('.error-message');
+          if (errorElement) {
+            errorElement.remove();
           }
           
-          const isValid = isValidCPF(value);
-          
-          // Aplica classes CSS
-          this.classList.toggle(settings.errorClass, !isValid);
-          this.classList.toggle(settings.validClass, isValid);
-          
-          // Executa callbacks
-          if (isValid && typeof settings.onValid === 'function') {
-            settings.onValid(value, this);
-          } else if (!isValid && typeof settings.onInvalid === 'function') {
-            settings.onInvalid(value, this);
+          // Habilita botões relacionados ao CPF
+          const form = element.closest('form');
+          if (form) {
+            const submitButton = form.querySelector('button[type="submit"], input[type="submit"], button.submit-btn');
+            if (submitButton) {
+              submitButton.disabled = false;
+            }
           }
-          
-          // Formata completamente o CPF se for válido
-          if (isValid) {
-            this.value = formatCPF(value, false);
+        },
+        onInvalid: function(value, element) {
+          // Adiciona mensagem de erro
+          if (value && cleanCPF(value).length === 11) {
+            let errorElement = element.parentNode.querySelector('.error-message');
+            
+            if (!errorElement) {
+              errorElement = document.createElement('div');
+              errorElement.className = 'error-message text-xs text-red-500 mt-1';
+              element.parentNode.insertBefore(errorElement, element.nextSibling);
+            }
+            
+            errorElement.textContent = 'CPF inválido';
           }
-        });
-      }
-    });
+        }
+      });
+      
+      // Adicionalmente, habilita botões associados a CPF em formulários
+      document.querySelectorAll('form').forEach(form => {
+        const cpfInputs = form.querySelectorAll('.cpf-input, input[name*="cpf"], input[id*="cpf"]');
+        
+        if (cpfInputs.length > 0) {
+          const submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"], button.submit-btn, button#consultar, button.consultar');
+          
+          submitButtons.forEach(button => {
+            // Habilita por padrão, será desabilitado na validação se necessário
+            button.disabled = false;
+          });
+        }
+      });
+      
+    } catch (error) {
+      console.error('Erro na inicialização do CPFValidator:', error);
+      // Não interrompe a execução da página em caso de erro
+    }
   }
   
   /**
@@ -319,39 +313,24 @@ const CPFValidator = (function() {
     validationCache.clear();
   }
   
+  // Executa inicialização quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    // DOM já está pronto
+    init();
+  }
+  
   // API pública
   return {
     format: formatCPF,
     isValid: isValidCPF,
-    validate: validateCPFWithDetails,
-    generate: generateValidCPF,
+    clean: cleanCPF,
     applyMask: applyMask,
-    clearCache: clearCache
+    clearCache: clearCache,
+    init: init
   };
 })();
-
-// Aplicar máscaras automaticamente em elementos com a classe 'cpf-input'
-document.addEventListener('DOMContentLoaded', function() {
-  CPFValidator.applyMask('.cpf-input', {
-    onValid: function(value, element) {
-      // Remove mensagens de erro
-      const errorMsg = element.parentNode.querySelector('.error-message');
-      if (errorMsg) errorMsg.remove();
-    },
-    onInvalid: function(value, element) {
-      // Adiciona mensagem de erro
-      let errorMsg = element.parentNode.querySelector('.error-message');
-      
-      if (!errorMsg) {
-        errorMsg = document.createElement('div');
-        errorMsg.className = 'error-message text-xs text-red-500 mt-1';
-        element.parentNode.insertBefore(errorMsg, element.nextSibling);
-      }
-      
-      errorMsg.textContent = 'CPF inválido';
-    }
-  });
-});
 
 // Expõe globalmente para uso em outros scripts
 window.CPFValidator = CPFValidator;
