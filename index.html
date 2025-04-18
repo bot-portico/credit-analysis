@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Análise de Crédito | Login</title>
+    <title>Plataforma Pórtico de Análise de Crédito | Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="assets/css/main.css">
@@ -89,8 +89,8 @@
             <!-- Mensagem informativa -->
             <div class="mt-6 text-center">
                 <p class="text-sm text-gray-500">
-                    Sistema seguro de análise de crédito
-                    <span class="block mt-1">© 2025 SuaEmpresa</span>
+                    Plataforma de Crédito Pórtico
+                    <span class="block mt-1">© 2025 Pórtico Negócios Financeiros</span>
                 </p>
             </div>
         </div>
@@ -193,7 +193,9 @@
             function formatCPFSafe(value) {
                 try {
                     // Tenta usar a função global do cpf-validator.js
-                    if (typeof formatCPF === 'function') {
+                    if (typeof CPFValidator !== 'undefined' && typeof CPFValidator.format === 'function') {
+                        return CPFValidator.format(value);
+                    } else if (typeof formatCPF === 'function') {
                         return formatCPF(value);
                     }
                     
@@ -213,7 +215,9 @@
             function isValidCPFSafe(value) {
                 try {
                     // Tenta usar a função global do cpf-validator.js
-                    if (typeof isValidCPF === 'function') {
+                    if (typeof CPFValidator !== 'undefined' && typeof CPFValidator.isValid === 'function') {
+                        return CPFValidator.isValid(value);
+                    } else if (typeof isValidCPF === 'function') {
                         return isValidCPF(value);
                     }
                     
@@ -230,7 +234,7 @@
             cpfInput.addEventListener('input', function() {
                 this.value = formatCPFSafe(this.value);
                 
-                // Validação visual do CPF (apenas para feedback, não bloqueia o botão)
+                // Validação visual do CPF (apenas para feedback)
                 const isValid = isValidCPFSafe(this.value);
                 
                 if (this.value.length > 0) {
@@ -239,16 +243,29 @@
                         cpfError.classList.add('hidden');
                         this.classList.add('border-green-500');
                         this.classList.remove('border-red-500');
+                        
+                        // Habilita o botão quando o CPF for válido
+                        fetchButton.disabled = false;
+                        fetchButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     } else {
                         cpfStatus.classList.add('hidden');
                         cpfError.classList.remove('hidden');
+                        cpfError.textContent = 'CPF inválido';
                         this.classList.add('border-red-500');
                         this.classList.remove('border-green-500');
+                        
+                        // Desabilita o botão quando o CPF for inválido
+                        fetchButton.disabled = true;
+                        fetchButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 } else {
                     cpfStatus.classList.add('hidden');
                     cpfError.classList.add('hidden');
                     this.classList.remove('border-green-500', 'border-red-500');
+                    
+                    // Desabilita o botão quando o campo estiver vazio
+                    fetchButton.disabled = true;
+                    fetchButton.classList.add('opacity-50', 'cursor-not-allowed');
                 }
             });
             
@@ -271,36 +288,18 @@
                 loadingElement.classList.remove('hidden');
                 
                 try {
-                    // Função para buscar dados de cliente (fallback caso integration.js falhe)
-                    const fetchCustomerDataSafe = (cpf) => {
-                        // Tenta usar a função do integration.js
-                        if (typeof fetchCustomerData === 'function') {
-                            return fetchCustomerData(cpf);
-                        }
-                        
-                        // Fallback: uma promessa que simula o comportamento
-                        console.warn('Função fetchCustomerData não encontrada. Usando fallback!');
-                        return new Promise((resolve, reject) => {
-                            setTimeout(() => {
-                                // Dados mockados para caso a função real não exista
-                                const mockData = {
-                                    personal: {
-                                        proponentes: [
-                                            {
-                                                nome: 'Cliente Exemplo',
-                                                cpf: cpf,
-                                                email: 'cliente@exemplo.com'
-                                            }
-                                        ]
-                                    }
-                                };
-                                resolve(mockData);
-                            }, 1500);
-                        });
-                    };
+                    // Verifica se Integration.fetchCustomerData existe
+                    if (typeof Integration === 'undefined' || typeof Integration.fetchCustomerData !== 'function') {
+                        throw new Error('API de integração não disponível');
+                    }
+
+                    // Desativa modo mock - IMPORTANTE: força uso real da API
+                    Integration.useMockData = false;
                     
-                    // AGUARDA a conclusão da busca de dados
-                    const data = await fetchCustomerDataSafe(cpf);
+                    // AGUARDA a conclusão da busca de dados utilizando a API real
+                    console.log('Iniciando consulta de CPF via API:', cpf);
+                    const data = await Integration.fetchCustomerData(cpf);
+                    console.log('Resposta da API:', data);
                     
                     // Valida se os dados retornados estão no formato esperado
                     if (!data || !data.personal || !data.personal.proponentes || data.personal.proponentes.length === 0) {
@@ -336,10 +335,21 @@
             cpfInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    fetchButton.click();
+                    if (!fetchButton.disabled) {
+                        fetchButton.click();
+                    }
                 }
             });
+
+            // Desabilita o botão inicialmente até que um CPF válido seja inserido
+            fetchButton.disabled = true;
+            fetchButton.classList.add('opacity-50', 'cursor-not-allowed');
         });
+
+        // Adiciona inicialização explicita do CPFValidator se necessário
+        if (typeof CPFValidator !== 'undefined' && typeof CPFValidator.init === 'function') {
+            CPFValidator.init();
+        }
     </script>
 </body>
 </html>
