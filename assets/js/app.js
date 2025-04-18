@@ -29,7 +29,12 @@ const CreditAnalysis = (function() {
   
   // Configurações
   const config = {
-    apiBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test',
+    // URL completa do webhook n8n para consultar CPF
+    consultaClienteUrl: 'https://suportico.app.n8n.cloud/webhook-test/consulta-cpf-deal',
+    // Outras URLs de webhook
+    analiseCreditoUrl:   'https://suportico.app.n8n.cloud/webhook-test/analise-credito',
+    getEnderecoUrl:      'https://suportico.app.n8n.cloud/webhook-test/get-endereco',
+
     autoSaveInterval: 30000, // 30 segundos
     sections: ['personal', 'property-simulation', 'income', 'constructor', 'summary'],
     requiredFields: {
@@ -40,6 +45,14 @@ const CreditAnalysis = (function() {
       summary: []
     }
   };
+
+  // ... o resto das funções do módulo permanece inalterado ...
+  
+  return {
+    // exportações públicas
+  };
+})();
+
   
   // Inicialização
   function init() {
@@ -690,7 +703,9 @@ const CreditAnalysis = (function() {
     showLoading();
     
     try {
-      const response = await fetch(`${config.apiBaseUrl}/get-endereco?empreendimento=${encodeURIComponent(empreendimento)}`);
+      const response = await fetch(
+  `${config.getEnderecoUrl}?empreendimento=${encodeURIComponent(empreendimento)}`
+);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar endereço');
@@ -743,15 +758,26 @@ const CreditAnalysis = (function() {
     }
   }
   
-  // Envia a análise para a API
-  async function submitAnalysis(formData) {
-    const response = await fetch(`${config.apiBaseUrl}/submit-analysis`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData)
-    });
+ /**
+ * Envia a análise para o webhook n8n
+ * @param {Object} formData - Dados coletados do formulário
+ */
+async function submitAnalysis(formData) {
+  const response = await fetch(config.analiseCreditoUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(formData)
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ao enviar análise: ${response.status} – ${text}`);
+  }
+  
+  return response.json();
+}
     
     if (!response.ok) {
       // Extrai mensagem de erro da resposta, se houver
