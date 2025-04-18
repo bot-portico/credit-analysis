@@ -952,6 +952,55 @@
         </div>
     </div>
 
+// Adicione este trecho dentro da tag <script> existente ou crie uma nova
+// antes do fechamento da tag </body>
+
+// Configura os botões de débito FGTS para passarem o ID do deal na URL
+function setupFGTSButtons() {
+  const debitoFGTSButtons = document.querySelectorAll('a[href="debito-fgts.html"]');
+  
+  debitoFGTSButtons.forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      // Previne navegação imediata
+      e.preventDefault();
+      
+      // Obtém o ID da operação atual
+      const dealId = document.getElementById('dealId')?.value || 
+                     localStorage.getItem('currentDealId');
+      
+      if (!dealId) {
+        // Se não tiver ID, mostra uma mensagem de erro
+        Integration.showNotification('ID da operação não encontrado. Salve os dados primeiro.', 'warning');
+        return;
+      }
+      
+      try {
+        // Mostra indicador de carregamento
+        document.getElementById('loading')?.classList.remove('hidden');
+        
+        // Salva os dados atuais antes de navegar
+        await CreditAnalysis.saveFormData();
+        
+        // Navega para a página de débito FGTS com o ID como parâmetro
+        window.location.href = `debito-fgts.html?dealId=${dealId}`;
+      } catch (error) {
+        console.error('Erro ao salvar dados:', error);
+        Integration.showNotification('Erro ao salvar dados antes de redirecionar', 'error');
+        document.getElementById('loading')?.classList.add('hidden');
+      }
+    });
+  });
+}
+
+// Adicione esta chamada ao final da função init() no seu app.js
+// ou adicione este trecho para ser executado quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+  // Suas outras inicializações...
+  
+  // Configura os botões de FGTS
+  setupFGTSButtons();
+});
+    
     <script src="assets/js/formatter.js"></script>
     <script src="assets/js/integration.js"></script>
     <script src="assets/js/app.js"></script>
