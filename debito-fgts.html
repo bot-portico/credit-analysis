@@ -192,6 +192,8 @@
             border-radius: 1rem;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
             text-align: center;
+            max-width: 90%;
+            width: 450px;
         }
         
         .loading-spinner {
@@ -209,6 +211,110 @@
             100% { transform: rotate(360deg); }
         }
         
+        /* Progresso */
+        .progress {
+            height: 0.75rem;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: #e2e8f0;
+            margin: 1rem 0;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(to right, #3182ce, #805ad5);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        /* Área de download */
+        .download-area {
+            border-radius: 0.5rem;
+            border: 2px dashed #cbd5e0;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .download-area:hover {
+            border-color: #3182ce;
+            background-color: #f0f9ff;
+        }
+        
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background-color: #3182ce;
+            color: white;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.75rem;
+            text-decoration: none;
+        }
+        
+        .download-btn:hover {
+            background-color: #2c5282;
+            transform: translateY(-2px);
+            color: white;
+        }
+        
+        .download-btn i {
+            margin-right: 0.5rem;
+        }
+        
+        /* Selector for bot type */
+        .bot-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .bot-option {
+            flex: 1 1 200px;
+            background-color: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .bot-option:hover {
+            border-color: #a0aec0;
+            transform: translateY(-2px);
+        }
+        
+        .bot-option.selected {
+            border-color: #3182ce;
+            background-color: #ebf8ff;
+        }
+        
+        .bot-option i {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+        }
+        
+        .bot-option.selected i {
+            color: #3182ce;
+        }
+        
+        .bot-option h6 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .bot-option p {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #718096;
+        }
+        
         /* Responsividade adicional */
         @media (max-width: 768px) {
             .card-header {
@@ -222,15 +328,23 @@
             .section-title {
                 font-size: 1.25rem;
             }
+            
+            .bot-option {
+                flex: 1 1 100%;
+            }
         }
     </style>
 </head>
 <body class="bg-light">
-    <!-- Loading overlay -->
+    <!-- Loading overlay com progresso -->
     <div id="loading" class="hidden">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <p class="mb-0 fw-medium">Processando solicitação...</p>
+            <p id="loading-message" class="mb-2 fw-medium">Processando solicitação...</p>
+            <div class="progress">
+                <div id="processing-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+            </div>
+            <p id="processing-time" class="mb-0 text-muted">Tempo estimado: <span id="estimated-time">3-5</span> minutos</p>
         </div>
     </div>
 
@@ -311,8 +425,56 @@
             </div>
         </div>
 
+        <!-- Área de Download de DAMP (inicialmente oculta) -->
+        <div id="download-area" class="download-area d-none">
+            <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
+            <h4>DAMP (Autorização de Débito de FGTS) Gerada</h4>
+            <p class="text-muted">O documento está pronto para download.</p>
+            <div id="download-buttons">
+                <!-- Os botões de download serão adicionados dinamicamente pelo JavaScript -->
+            </div>
+        </div>
+
         <!-- Formulário de Débito FGTS -->
         <form id="form-debito-fgts">
+            <!-- Seleção do Tipo de Bot -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Tipo de Processamento</h3>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Selecione o tipo de processamento desejado:</p>
+                    <div class="bot-selector">
+                        <div class="bot-option" data-bot-type="BotIndividual">
+                            <i class="fas fa-user"></i>
+                            <h6>Individual</h6>
+                            <p>Débito de FGTS individual com geração de DAMP</p>
+                        </div>
+                        <div class="bot-option" data-bot-type="BotDampManual">
+                            <i class="fas fa-file-alt"></i>
+                            <h6>DAMP Manual</h6>
+                            <p>Apenas impressão do documento sem débito</p>
+                        </div>
+                        <div class="bot-option" data-bot-type="botConsultaOperacao">
+                            <i class="fas fa-search"></i>
+                            <h6>Consulta Operação</h6>
+                            <p>Consulta de dados e status da operação</p>
+                        </div>
+                        <div class="bot-option" data-bot-type="botDampCIWEB">
+                            <i class="fas fa-globe"></i>
+                            <h6>DAMP CIWEB</h6>
+                            <p>Débito via sistema CIWEB</p>
+                        </div>
+                        <div class="bot-option" data-bot-type="BotEmpreendimento">
+                            <i class="fas fa-building"></i>
+                            <h6>Empreendimento</h6>
+                            <p>Débito para empreendimentos imobiliários</p>
+                        </div>
+                    </div>
+                    <input type="hidden" id="selectedBotType" name="botType" required>
+                </div>
+            </div>
+
             <!-- Informações Gerais -->
             <div class="card">
                 <div class="card-header">
@@ -322,8 +484,8 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label for="fgtsNumeroContato" class="form-label">
-                                Nº Contato FGTS
-                                <i class="fas fa-circle-info info-tooltip" data-bs-toggle="tooltip" title="Número de protocolo do contato com o FGTS (opcional)"></i>
+                                Nº Protocolo FGTS
+                                <i class="fas fa-circle-info info-tooltip" data-bs-toggle="tooltip" title="Número de protocolo de atendimento do FGTS (opcional)"></i>
                             </label>
                             <input type="text" id="fgtsNumeroContato" class="form-control" placeholder="Protocolo de atendimento">
                         </div>
@@ -526,12 +688,12 @@
                 <div class="card-body">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                         <div class="text-center text-md-start mb-3 mb-md-0">
-                            <h5>Pronto para enviar?</h5>
+                            <h5>Pronto para gerar a DAMP?</h5>
                             <p class="text-muted mb-0">Confira todos os dados antes de prosseguir</p>
                         </div>
                         <div id="status-envio" class="alert mb-0 mx-2 d-none" role="alert"></div>
                         <button type="submit" id="enviarSolicitacaoBtn" class="btn btn-primary btn-lg">
-                            <i class="fas fa-paper-plane me-2"></i> Enviar Solicitação de Débito
+                            <i class="fas fa-paper-plane me-2"></i> Gerar DAMP
                         </button>
                     </div>
                 </div>
@@ -556,12 +718,22 @@
                         <li>Pagamento de parte das prestações de financiamento habitacional</li>
                     </ul>
                     
+                    <h6 class="mt-4">Tipos de processamento disponíveis:</h6>
+                    <ul>
+                        <li><strong>Individual:</strong> Débito de FGTS individual com geração de DAMP</li>
+                        <li><strong>DAMP Manual:</strong> Apenas impressão do documento sem débito efetivo</li>
+                        <li><strong>Consulta Operação:</strong> Consulta status e dados da operação</li>
+                        <li><strong>DAMP CIWEB:</strong> Débito via sistema CIWEB da CAIXA</li>
+                        <li><strong>Empreendimento:</strong> Débito para empreendimentos imobiliários</li>
+                    </ul>
+                    
                     <h6 class="mt-4">Informações importantes:</h6>
                     <ul>
                         <li>Cada proponente pode ter uma ou mais contas de FGTS</li>
                         <li>O código do estabelecimento e o código do empregado são informações obrigatórias que constam no extrato do FGTS</li>
                         <li>A SUREG (Superintendência Regional) corresponde ao estado onde a conta foi aberta</li>
                         <li>Contas inativas também podem ser utilizadas para débito</li>
+                        <li>A DAMP (Documento de Autorização para Movimentação da Conta Vinculada do FGTS) é o documento oficial gerado</li>
                     </ul>
                     
                     <h6 class="mt-4">Campos obrigatórios:</h6>
@@ -600,17 +772,5 @@
     <script src="js/formatter.js"></script>
     <script src="js/ploomes.js"></script>
     <script src="js/debito-fgts.js"></script>
-    <script>
-        // Ativar tooltips
-        document.addEventListener('DOMContentLoaded', function() {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-            
-            // Atualizar ano no footer
-            document.getElementById('current-year').textContent = new Date().getFullYear();
-        });
-    </script>
 </body>
 </html>
