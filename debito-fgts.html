@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Débito FGTS - Análise de Crédito</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css"> <link rel="stylesheet" href="css/debito-fgts.css"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header class="container-fluid bg-dark text-light p-3 mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1>Análise de Crédito - Débito FGTS</h1>
+            </div>
+            <div class="col-auto">
+                 <button id="voltarDashboardBtn" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="dados-operacao" class="mb-4 p-3 border rounded shadow-sm">
+            <h2>Dados da Operação (Ploomes)</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="dealId" class="form-label">ID da Operação:</label>
+                    <input type="text" id="dealId" class="form-control" data-fieldkey="deal_Id" readonly>
+                </div>
+                <div class="col-md-8">
+                    <label for="dealName" class="form-label">Nome da Operação:</label>
+                    <input type="text" id="dealName" class="form-control" data-fieldkey="deal_Name" readonly>
+                </div>
+                 <div class="col-md-6">
+                    <label for="contactName" class="form-label">Cliente Principal:</label>
+                    <input type="text" id="contactName" class="form-control" data-fieldkey="contact_Name" readonly>
+                </div>
+                 <div class="col-md-6">
+                    <label for="contactCPF" class="form-label">CPF Cliente Principal:</label>
+                    <input type="text" id="contactCPF" class="form-control" data-fieldkey="contact_CPF" readonly> </div>
+                <div class="col-md-4">
+                    <label for="valorFinanciamento" class="form-label">Valor Financiamento:</label>
+                    <input type="text" id="valorFinanciamento" class="form-control" data-fieldkey="deal_ValorFinanciamento" readonly> </div>
+                 <div class="col-md-4">
+                    <label for="valorCompraVenda" class="form-label">Valor Compra/Venda:</label>
+                    <input type="text" id="valorCompraVenda" class="form-control" data-fieldkey="deal_ValorCompraVenda" readonly> </div>
+                  <div class="col-md-4">
+                    <label for="valorFGTSDebitar" class="form-label">Valor Total FGTS a Debitar:</label>
+                    <input type="text" id="valorFGTSDebitar" class="form-control" data-fieldkey="deal_ValorFGTS" readonly> </div>
+            </div>
+        </section>
+
+        <section id="dados-fgts-input" class="mb-4">
+            <h2>Dados para Débito FGTS</h2>
+            <form id="form-debito-fgts">
+
+                <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+                    <h4>Informações Gerais da Solicitação</h4>
+                     <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="fgtsNumeroContato" class="form-label">Nº Contato FGTS (Opcional):</label>
+                            <input type="text" id="fgtsNumeroContato" class="form-control">
+                        </div>
+                         <div class="col-md-4">
+                            <label for="fgtsAgencia" class="form-label">Agência Vinculada:</label>
+                            <input type="text" id="fgtsAgencia" class="form-control" required>
+                        </div>
+                         <div class="col-md-4">
+                            <label for="fgtsContrato" class="form-label">Nº Contrato Financiamento:</label>
+                            <input type="text" id="fgtsContrato" class="form-control" required>
+                        </div>
+                          <div class="col-md-4">
+                            <label for="fgtsMatriculaImovel" class="form-label">Matrícula do Imóvel:</label>
+                            <input type="text" id="fgtsMatriculaImovel" class="form-control" required>
+                        </div>
+                         <div class="col-md-4">
+                            <label for="fgtsTipoComplemento" class="form-label">Tipo Complemento Imóvel:</label>
+                            <select id="fgtsTipoComplemento" class="form-select" required>
+                                <option value="" selected disabled>Selecione...</option>
+                                <option value="APARTAMENTO">APARTAMENTO</option>
+                                <option value="CASA">CASA</option>
+                                <option value="LOTE">LOTE</option>
+                                </select>
+                        </div>
+                        <div class="col-md-4">
+                             <label for="fgtsNumeroComplemento" class="form-label">Nº Complemento (Apto/Casa):</label>
+                            <input type="text" id="fgtsNumeroComplemento" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                             <label for="fgtsBlocoComplemento" class="form-label">Bloco/Torre (Opcional):</label>
+                            <input type="text" id="fgtsBlocoComplemento" class="form-control">
+                        </div>
+
+                        </div>
+                </div>
+
+                <hr>
+
+                <div id="proponentes-container">
+                    <div class="proponente-section mb-4 p-3 border rounded shadow-sm bg-light" id="proponente-template" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Dados do Proponente <span class="proponente-numero">1</span></h4>
+                            <button type="button" class="btn btn-danger btn-sm remover-proponente-btn">
+                                <i class="fas fa-trash-alt"></i> Remover Proponente
+                            </button>
+                        </div>
+                        <div class="row g-3">
+                             <div class="col-md-6">
+                                <label class="form-label">Nome Completo:</label>
+                                <input type="text" class="form-control proponente-nome" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">CPF:</label>
+                                <input type="text" class="form-control proponente-cpf" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">PIS/PASEP:</label>
+                                <input type="text" class="form-control proponente-pis" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data de Nascimento:</label>
+                                <input type="date" class="form-control proponente-nascimento" required>
+                            </div>
+                             <div class="col-md-6">
+                                <label class="form-label">Nº Carteira Trabalho:</label>
+                                <input type="text" class="form-control proponente-carteira">
+                            </div>
+                             <div class="col-md-6">
+                                <label class="form-label">Série Carteira Trabalho:</label>
+                                <input type="text" class="form-control proponente-serie">
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5>Contas FGTS deste Proponente</h5>
+                        <div class="contas-fgts-container mb-3">
+                            <div class="conta-fgts-section row g-3 align-items-center mb-3 p-2 border rounded bg-white" id="conta-fgts-template" style="display: none;">
+                                 <div class="col-md-2">
+                                    <label class="form-label">Situação:</label>
+                                    <input type="text" class="form-control conta-situacao" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Cod. Estabelecimento:</label>
+                                    <input type="text" class="form-control conta-estabelecimento" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Cod. Empregado (Conta):</label>
+                                    <input type="text" class="form-control conta-numero" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">SUREG:</label>
+                                     <select class="form-select conta-sureg" required>
+                                        <option value="" selected disabled>Sel.</option>
+                                        <option value="01">01 - BA</option>
+                                        <option value="02">02 - DF</option>
+                                        <option value="03">03 - GO</option>
+                                        <option value="04">04 - MG</option>
+                                        <option value="05">05 - PR</option>
+                                        <option value="06">06 - PE</option>
+                                        <option value="07">07 - RJ</option>
+                                        <option value="08">08 - RS</option>
+                                        <option value="09">09 - SP</option>
+                                        <option value="10">10 - CE</option>
+                                        <option value="11">11 - AL</option>
+                                        <option value="12">12 - MT</option>
+                                        <option value="13">13 - ES</option>
+                                        <option value="14">14 - PA</option>
+                                        <option value="15">15 - SC</option>
+                                        <option value="16">16 - AM</option>
+                                        <option value="17">17 - RN</option>
+                                        <option value="18">18 - PB</option>
+                                        <option value="19">19 - PI</option>
+                                        <option value="20">20 - SE</option>
+                                        <option value="21">21 - MA</option>
+                                        <option value="22">22 - MS</option>
+                                        <option value="23">23 - RO</option>
+                                        <option value="24">24 - TO</option>
+                                        <option value="25">25 - RR</option>
+                                        <option value="26">26 - AC</option>
+                                        <option value="27">27 - AP</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Valor a Debitar:</label>
+                                    <input type="number" step="0.01" class="form-control conta-valor" required>
+                                </div>
+                                <div class="col-md-auto align-self-end">
+                                     <button type="button" class="btn btn-danger btn-sm remover-conta-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                             </div>
+                        <button type="button" class="btn btn-success btn-sm adicionar-conta-btn">
+                            <i class="fas fa-plus"></i> Adicionar Conta FGTS
+                        </button>
+                    </div>
+                    </div>
+
+                <button type="button" id="adicionar-proponente-btn" class="btn btn-info mt-3">
+                     <i class="fas fa-user-plus"></i> Adicionar Outro Proponente
+                </button>
+
+                <hr class="my-4">
+
+                <div class="d-grid gap-2 col-6 mx-auto mt-4">
+                     <button type="submit" id="enviarSolicitacaoBtn" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane"></i> Enviar Solicitação de Débito
+                    </button>
+                </div>
+
+                 <div id="status-envio" class="mt-3 alert" role="alert" style="display: none;">
+                    </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="container mt-5 text-center text-muted">
+        <p>&copy; <span id="current-year"></span> Plataforma Pórtico de Débito de FGTS</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/utils.js"></script> <script src="js/ploomes.js"></script> <script src="js/debito-fgts.js"></script>
+</body>
+</html>
