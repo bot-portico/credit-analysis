@@ -780,38 +780,37 @@ $(document).ready(function() {
         }
         
         // Coleta dados dos proponentes e suas contas
-        proponentesContainer.find('.proponente-section:not(#proponente-template)').each(function() {
-            const proponenteSection = $(this);
-            
-            const pessoa = {
-                nome: proponenteSection.find('.proponente-nome').val(),
-                cpf: proponenteSection.find('.proponente-cpf').val().replace(/\D/g, ''),
-                pis: proponenteSection.find('.proponente-pis').val(),
-                nascimento: proponenteSection.find('.proponente-nascimento').val(),
-                carteira: proponenteSection.find('.proponente-carteira').val(),
-                serie: proponenteSection.find('.proponente-serie').val(),
-                contas: []
-            };
-            
-            // Coleta dados das contas FGTS
-            proponenteSection.find('.contas-fgts-container .conta-fgts-section:not(#conta-fgts-template)').each(function() {
-                const contaSection = $(this);
-                
-                const conta = {
-                    situacao: contaSection.find('.conta-situacao').val(),
-                    estabelecimento: contaSection.find('.conta-estabelecimento').val(),
-                    numero: contaSection.find('.conta-numero').val(),
-                    sureg: contaSection.find('.conta-sureg').val(),
-                    valor: parseFloat(contaSection.find('.conta-valor').val()) || 0,
-                    admissao: contaSection.find('.conta-admissao').val() || null,
-                    empregador: contaSection.find('.conta-empregador').val() || ''
-                };
-                
-                pessoa.contas.push(conta);
-            });
-            
-            payload.pessoas.push(pessoa);
-        });
+$(".proponente-card:visible").each(function() {
+    const proponenteCard = $(this);
+    
+    const pessoa = {
+        nome: proponenteCard.find(".proponente-nome").val(),
+        cpf: proponenteCard.find(".proponente-cpf").val().replace(/\D/g, ''),
+        pis: proponenteCard.find(".proponente-pis").val(),
+        nascimento: proponenteCard.find(".proponente-nascimento").val(),
+        carteira: proponenteCard.find(".proponente-carteira").val(),
+        serie: proponenteCard.find(".proponente-serie").val(),
+        contas: []
+    };
+    
+    // Coleta dados das contas FGTS
+    proponenteCard.find(".conta-fgts-card").each(function() {
+        const contaCard = $(this);
+        
+        const conta = {
+            situacao: contaCard.find(".conta-situacao").val(),
+            estabelecimento: contaCard.find(".conta-estabelecimento").val(),
+            numero: contaCard.find(".conta-numero").val(),
+            sureg: contaCard.find(".conta-sureg").val(),
+            valor: parseFloat(contaCard.find(".conta-valor").val()) || 0,
+            empregador: contaCard.find(".conta-empregador").val() || ''
+        };
+        
+        pessoa.contas.push(conta);
+    });
+    
+    payload.pessoas.push(pessoa);
+});
         
         // Adiciona metadados
         payload.metadata = {
