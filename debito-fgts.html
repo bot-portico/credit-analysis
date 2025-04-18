@@ -528,6 +528,15 @@
 
             <!-- Container para Proponentes -->
             <h3 class="section-title mt-4">Proponentes e Contas FGTS</h3>
+            <!-- Container para proponentes -->
+<div id="proponentesContainer">
+    <!-- Os cards de proponente serão adicionados aqui -->
+</div>
+
+<!-- Botão para adicionar proponente (este já deve existir em sua página) -->
+<button id="adicionarProponenteBtn" class="btn btn-primary d-flex align-items-center justify-content-center mx-auto mb-4">
+    <i class="fas fa-user-plus me-2"></i> Adicionar Outro Proponente
+</button>            
             <div id="proponentes-container">
                 <!-- Template de Proponente (invisível, será clonado via JS) -->
                 <div class="proponente-section card proponente-card mb-4" id="proponente-template" style="display: none;">
@@ -765,6 +774,141 @@
         </div>
     </footer>
 
+<!-- Templates (ocultos) -->
+<div style="display: none;">
+    <!-- Template de Proponente -->
+    <div id="proponente-template" class="card mb-4 proponente-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Proponente 1</h5>
+            <button type="button" class="btn btn-sm btn-outline-danger remover-proponente-btn">
+                <i class="fas fa-trash-alt"></i> Remover
+            </button>
+        </div>
+        <div class="card-body">
+            <!-- Dados do Proponente -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control proponente-nome" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">CPF <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control proponente-cpf" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">PIS/PASEP <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control proponente-pis" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Data de Nascimento <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control proponente-nascimento" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nº Carteira Trabalho</label>
+                    <input type="text" class="form-control proponente-carteira">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Série Carteira Trabalho</label>
+                    <input type="text" class="form-control proponente-serie">
+                </div>
+            </div>
+            
+            <!-- Contas FGTS -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Contas FGTS</h6>
+                <span class="badge bg-primary rounded-pill contas-counter">0</span>
+            </div>
+            
+            <!-- Container para as contas FGTS -->
+            <div class="contas-fgts-container mb-3">
+                <!-- Aqui serão adicionadas dinamicamente as contas FGTS -->
+            </div>
+            
+            <!-- Botão para adicionar nova conta FGTS -->
+            <button type="button" class="btn btn-sm btn-outline-primary adicionar-conta-btn">
+                <i class="fas fa-plus"></i> Adicionar Conta FGTS
+            </button>
+        </div>
+    </div>
+
+    <!-- Template de Conta FGTS -->
+    <div class="conta-fgts-template">
+        <div class="card mb-3 conta-fgts-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="conta-numero-label mb-0">Conta FGTS 1</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger remover-conta-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Situação <span class="text-danger">*</span></label>
+                        <select class="form-select conta-situacao" required>
+                            <option value="" selected disabled>Selecione</option>
+                            <option value="ATIVA">ATIVA</option>
+                            <option value="INATIVA">INATIVA</option>
+                            <option value="BLOQUEADA">BLOQUEADA</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Cod. Estabelecimento <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control conta-estabelecimento" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Cod. Empregado (Conta) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control conta-numero" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">SUREG <span class="text-danger">*</span></label>
+                        <select class="form-select conta-sureg" required>
+                            <option value="" selected disabled>Selecione</option>
+                            <option value="01">01 - BA</option>
+                            <option value="02">02 - DF</option>
+                            <option value="03">03 - GO</option>
+                            <option value="04">04 - MG</option>
+                            <option value="05">05 - PR</option>
+                            <option value="06">06 - PE</option>
+                            <option value="07">07 - RJ</option>
+                            <option value="08">08 - RS</option>
+                            <option value="09">09 - SP</option>
+                            <option value="10">10 - CE</option>
+                            <option value="11">11 - AL</option>
+                            <option value="12">12 - MT</option>
+                            <option value="13">13 - ES</option>
+                            <option value="14">14 - PA</option>
+                            <option value="15">15 - SC</option>
+                            <option value="16">16 - AM</option>
+                            <option value="17">17 - RN</option>
+                            <option value="18">18 - PB</option>
+                            <option value="19">19 - PI</option>
+                            <option value="20">20 - SE</option>
+                            <option value="21">21 - MA</option>
+                            <option value="22">22 - MS</option>
+                            <option value="23">23 - RO</option>
+                            <option value="24">24 - TO</option>
+                            <option value="25">25 - RR</option>
+                            <option value="26">26 - AC</option>
+                            <option value="27">27 - AP</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nome do Empregador</label>
+                        <input type="text" class="form-control conta-empregador">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Valor a Debitar <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" step="0.01" class="form-control conta-valor" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
