@@ -1,0 +1,16 @@
+/* Estilos específicos para debito-fgts.html, se necessário */
+.proponente-section, .conta-fgts-section {
+    transition: background-color 0.3s ease;
+}
+
+.proponente-section:hover, .conta-fgts-section:hover {
+    background-color: #f8f9fa !important; /* Um leve destaque no hover */
+}
+
+.remover-proponente-btn, .remover-conta-btn {
+    line-height: 1; /* Ajusta altura do botão de remoção */
+}
+
+.form-label {
+    font-weight: 500;
+}
