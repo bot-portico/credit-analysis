@@ -1,24 +1,51 @@
 /**
- * Módulo de Débito FGTS
- * Sistema de Análise de Crédito - Versão 2.1.5
- * Integração com n8n para processamento de débito FGTS
+ * Módulo de Débito FGTS - Sistema de Análise de Crédito
+ * Versão 2.1.5
+ * 
+ * Integração com n8n e bots FGTS para processamento e geração de DAMP
+ * (Documento de Autorização para Movimentação da Conta Vinculada do FGTS)
  */
 $(document).ready(function() {
     // Elementos principais
     const proponentesContainer = $('#proponentes-container');
     const templateProponente = $('#proponente-template');
     const templateConta = $('#conta-fgts-template');
+    const downloadArea = $('#download-area');
     
     // Configurações
     const config = {
-        n8nWebhookUrl: 'https://suportico.app.n8n.cloud/webhook-test/debito-fgts', // URL do webhook n8n
-        minContasPerProponente: 1, // Mínimo de contas por proponente
-        maxProponentes: 10, // Máximo de proponentes permitidos
-        autoSave: true, // Salvamento automático no localStorage
+        // Webhook principal do n8n (será completado com o tipo de bot selecionado)
+        n8nWebhookBaseUrl: 'https://suportico.app.n8n.cloud/webhook-test/fgts/',
+        
+        // URLs específicas para cada tipo de bot
+        botTypeUrls: {
+            'BotIndividual': 'bot-individual',
+            'BotDampManual': 'bot-damp-manual',
+            'botConsultaOperacao': 'bot-consulta-operacao',
+            'botDampCIWEB': 'bot-damp-ciweb',
+            'BotEmpreendimento': 'bot-empreendimento'
+        },
+        
+        // Tempos estimados de processamento por tipo de bot (em minutos)
+        botProcessingTimes: {
+            'BotIndividual': '3-5',
+            'BotDampManual': '1-2',
+            'botConsultaOperacao': '1-3',
+            'botDampCIWEB': '4-6',
+            'BotEmpreendimento': '5-8'
+        },
+        
+        // Configurações gerais
+        minContasPerProponente: 1,
+        maxProponentes: 10,
+        autoSave: true,
         autoSaveInterval: 30000, // 30 segundos
-        retryAttempts: 2, // Tentativas de reenvio em caso de erro
-        errorTimeout: 5000, // Tempo para exibição de mensagens de erro (ms)
-        validateOnBlur: true // Validação ao sair do campo
+        errorTimeout: 5000,      // Tempo para exibição de mensagens de erro (ms)
+        validateOnBlur: true,    // Validação ao sair do campo
+        
+        // Simulação de progresso
+        progressUpdateInterval: 1000, // Atualização de progresso a cada 1 segundo
+        progressMaxTime: 300000       // Tempo máximo de processamento (5 minutos em ms)
     };
     
     // Estado da aplicação
@@ -29,7 +56,10 @@ $(document).ready(function() {
         formModified: false,
         isSubmitting: false,
         autosaveTimer: null,
-        proponentesData: [] // Para armazenar dados dos proponentes e suas contas
+        selectedBotType: null,
+        processingStartTime: null,
+        processingTimer: null,
+        downloadedFiles: []
     };
 
     // --- Inicialização ---
@@ -58,6 +88,9 @@ $(document).ready(function() {
         // Adiciona o primeiro proponente automaticamente
         addProponentSection();
         
+        // Configura o seletor de tipo de bot
+        setupBotTypeSelector();
+        
         // Configura a validação de formulário
         setupValidation();
         
@@ -68,6 +101,44 @@ $(document).ready(function() {
         
         // Atualiza contadores
         updateContadores();
+        
+        // Define o ano atual no footer
+        $('#current-year').text(new Date().getFullYear());
+        
+        // Ativa tooltips
+        setupTooltips();
+    }
+
+    // --- Configuração de UI ---
+    
+    // Configura tooltips
+    function setupTooltips() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+    
+    // Configura o seletor de tipo de bot
+    function setupBotTypeSelector() {
+        $('.bot-option').on('click', function() {
+            // Remove a classe 'selected' de todas as opções
+            $('.bot-option').removeClass('selected');
+            
+            // Adiciona a classe 'selected' à opção clicada
+            $(this).addClass('selected');
+            
+            // Atualiza o valor no campo hidden e o estado
+            const botType = $(this).data('bot-type');
+            $('#selectedBotType').val(botType);
+            state.selectedBotType = botType;
+            
+            // Atualiza mensagem de tempo estimado
+            $('#estimated-time').text(config.botProcessingTimes[botType] || '3-5');
+            
+            // Marca o formulário como modificado
+            markFormAsModified();
+        });
     }
 
     // --- Interação com Ploomes ---
@@ -362,6 +433,9 @@ $(document).ready(function() {
         // Marca o formulário como modificado
         markFormAsModified();
         
+        // Atualiza tooltips para os novos elementos
+        setupTooltips();
+        
         return newAccount;
     }
     
@@ -432,9 +506,6 @@ $(document).ready(function() {
             valorTotal += valor;
         });
         
-        // Atualiza interface (se tiver elementos para isso)
-        // Esta parte pode ser expandida conforme necessário
-        
         // Retorna estatísticas para uso em outras funções
         return {
             proponentes: totalProponentes,
@@ -465,6 +536,11 @@ $(document).ready(function() {
         // Formata campos monetários
         $(document).on('blur', '.money-input', function() {
             formatMoneyField(this);
+        });
+        
+        // Validação de seleção de bot
+        $(document).on('click', '.bot-option', function() {
+            $('#selectedBotType').removeClass('is-invalid').addClass('is-valid');
         });
     }
     
@@ -588,6 +664,16 @@ $(document).ready(function() {
         let isValid = true;
         let firstInvalidField = null;
         
+        // Valida se um tipo de bot foi selecionado
+        if (!state.selectedBotType) {
+            showStatus('Selecione um tipo de processamento antes de continuar.', 'danger');
+            $('.bot-option').addClass('border-danger');
+            setTimeout(() => {
+                $('.bot-option').removeClass('border-danger');
+            }, 1500);
+            return false;
+        }
+        
         // Valida campos gerais
         $('#form-debito-fgts .form-control[required], #form-debito-fgts .form-select[required]').each(function() {
             if (!validateField(this) && !firstInvalidField) {
@@ -651,8 +737,9 @@ $(document).ready(function() {
     function gatherFormData() {
         // Dados básicos da operação
         const payload = {
+            botType: state.selectedBotType, // Importante: tipo de bot selecionado
+            dealId: state.dealId,
             status: "Pendente",
-            id: parseInt(state.dealId) || null,
             dataHoraEntrada: new Date().toLocaleString("pt-BR"),
             matricula: $('#fgtsMatriculaImovel').val(),
             tipoComplemento: $('#fgtsTipoComplemento').val(),
@@ -661,7 +748,7 @@ $(document).ready(function() {
             bairro: $('#fgtsBairro').val(),
             agencia: $('#fgtsAgencia').val(),
             contrato: $('#fgtsContrato').val(),
-            numeroContatoFGTS: $('#fgtsNumeroContato').val(),
+            numeroContatoFGTS: $('#fgtsNumeroContato').val(), // Protocolo FGTS (opcional)
             pessoas: []
         };
         
@@ -737,21 +824,94 @@ $(document).ready(function() {
         return payload;
     }
 
+    // --- Processamento DAMP e Simulação de Progresso ---
+    
+    // Inicia o progresso simulado
+    function startProgressSimulation() {
+        // Reseta o progresso
+        const progressBar = $('#processing-progress');
+        progressBar.css('width', '0%');
+        
+        // Registra o momento de início
+        state.processingStartTime = new Date();
+        
+        // Calcula o tempo total estimado com base no tipo de bot
+        const timeEstimate = config.botProcessingTimes[state.selectedBotType] || '3-5';
+        const [minMinutes, maxMinutes] = timeEstimate.split('-').map(t => parseInt(t.trim()));
+        
+        // Escolhe um tempo aleatório entre min e max (em ms)
+        const processingTime = (Math.random() * (maxMinutes - minMinutes) + minMinutes) * 60 * 1000;
+        
+        // Atualiza a mensagem de tempo estimado
+        $('#estimated-time').text(timeEstimate);
+        
+        // Define o intervalo para atualizar o progresso
+        state.processingTimer = setInterval(() => {
+            updateProgressBar(processingTime);
+        }, config.progressUpdateInterval);
+    }
+    
+    // Atualiza a barra de progresso
+    function updateProgressBar(totalTime) {
+        const now = new Date();
+        const elapsedTime = now - state.processingStartTime;
+        const progressPercent = Math.min(Math.round((elapsedTime / totalTime) * 100), 99); // Máximo 99% até completar
+        
+        // Atualiza a barra de progresso
+        $('#processing-progress').css('width', `${progressPercent}%`);
+        
+        // Se o tempo estimado for atingido mas o webhook ainda não retornou,
+        // mantém o progresso em 99% até o retorno
+        if (progressPercent >= 99) {
+            // Atualiza a mensagem
+            $('#loading-message').text('Finalizando processamento...');
+            clearInterval(state.processingTimer);
+        } else {
+            // Calcula o tempo restante estimado
+            const remainingMs = totalTime - elapsedTime;
+            const remainingMinutes = Math.ceil(remainingMs / 60000);
+            
+            // Atualiza a mensagem
+            $('#loading-message').text(`Processando DAMP... (${progressPercent}%)`);
+            $('#processing-time').text(`Tempo restante estimado: aproximadamente ${remainingMinutes} ${remainingMinutes === 1 ? 'minuto' : 'minutos'}`);
+        }
+    }
+    
+    // Finaliza o processamento com sucesso
+    function completeProgress() {
+        // Interrompe a simulação de progresso
+        clearInterval(state.processingTimer);
+        
+        // Define o progresso como 100%
+        $('#processing-progress').css('width', '100%');
+        $('#loading-message').text('Processamento concluído!');
+        
+        // Esconde o loading após um momento
+        setTimeout(() => {
+            toggleLoading(false);
+        }, 1000);
+    }
+
     // --- Envio de Dados e Integração ---
     async function sendToN8N(payload) {
         if (state.isSubmitting) return;
         
         state.isSubmitting = true;
-        showStatus('Enviando solicitação...', 'info', false);
-        toggleLoading(true, 'Processando solicitação de débito FGTS...');
+        
+        // Prepara a URL do webhook com base no tipo de bot selecionado
+        const webhookUrl = `${config.n8nWebhookBaseUrl}${config.botTypeUrls[state.selectedBotType]}`;
+        
+        // Mostra o indicador de carregamento com progresso
+        toggleLoading(true, 'Iniciando processamento da DAMP...');
+        startProgressSimulation();
         
         // Desabilita o botão de envio e mostra indicador de carregamento
         $('#enviarSolicitacaoBtn')
             .prop('disabled', true)
-            .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...');
+            .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...');
         
         try {
-            const response = await fetch(config.n8nWebhookUrl, {
+            const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -775,15 +935,14 @@ $(document).ready(function() {
             const result = await response.json();
             console.log('Resposta do n8n:', result);
 
-            // Exibe mensagem de sucesso e possível link para documento
-            let successMessage = result.message || 'Solicitação de débito FGTS enviada com sucesso!';
+            // Completa o progresso
+            completeProgress();
             
-            if (result.documentUrl) {
-                successMessage += ` <a href="${result.documentUrl}" target="_blank" class="fw-bold text-decoration-none"><i class="fas fa-external-link-alt me-1"></i>Ver Documento</a>`;
-            }
+            // Processa documentos gerados e exibe área de download
+            processDocuments(result);
             
-            // Exibe um status de sucesso
-            showStatus(successMessage, 'success');
+            // Exibe mensagem de sucesso
+            showStatus('DAMP gerada com sucesso! Os documentos estão disponíveis para download.', 'success');
             
             // Atualiza o status da operação
             $('#operation-status')
@@ -797,37 +956,148 @@ $(document).ready(function() {
             // Desabilita o formulário para evitar envios duplicados
             disableForm();
             
-            // Opção para voltar ao dashboard após alguns segundos
-            setTimeout(() => {
-                if (confirm('Débito FGTS processado com sucesso! Deseja voltar ao Dashboard?')) {
-                    window.location.href = `dashboard.html?dealId=${state.dealId}`;
-                }
-            }, 3000);
-
         } catch (error) {
             console.error('Erro ao enviar para o n8n:', error);
-            showStatus(`Erro ao enviar solicitação: ${error.message}. Tente novamente.`, 'danger');
+            showStatus(`Erro ao gerar DAMP: ${error.message}. Tente novamente.`, 'danger');
             
             // Atualiza o status da operação
             $('#operation-status')
                 .removeClass('pending success')
                 .addClass('error')
                 .html('<i class="fas fa-times-circle"></i> Erro no processamento');
+                
+            // Interrompe simulação de progresso
+            clearInterval(state.processingTimer);
         } finally {
             // Reabilita o botão de envio
             $('#enviarSolicitacaoBtn')
                 .prop('disabled', false)
-                .html('<i class="fas fa-paper-plane me-2"></i> Enviar Solicitação de Débito');
+                .html('<i class="fas fa-paper-plane me-2"></i> Gerar DAMP');
                 
             state.isSubmitting = false;
-            toggleLoading(false);
+        }
+    }
+    
+    // Processa documentos retornados pelo webhook
+    function processDocuments(result) {
+        // Limpa a área de download
+        $('#download-buttons').empty();
+        
+        // Se não houver documentos, exibe mensagem
+        if (!result.documents || result.documents.length === 0) {
+            $('#download-area').removeClass('d-none').html(`
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h4>Nenhum documento foi gerado</h4>
+                    <p class="text-muted">A operação foi concluída, mas nenhum documento foi retornado.</p>
+                    <button type="button" class="btn btn-primary mt-3" onclick="window.location.reload()">Tentar Novamente</button>
+                </div>
+            `);
+            return;
+        }
+        
+        // Armazena os documentos no estado
+        state.downloadedFiles = result.documents;
+        
+        // Exibe a área de download
+        $('#download-area').removeClass('d-none');
+        
+        // Adiciona botões para cada documento
+        result.documents.forEach((doc, index) => {
+            const fileName = doc.fileName || `DAMP_${index + 1}.pdf`;
+            const fileUrl = doc.url || doc.base64;
+            const isBase64 = !doc.url && doc.base64;
+            
+            const downloadBtn = $(`
+                <a href="#" class="download-btn" data-index="${index}">
+                    <i class="fas fa-download"></i> ${fileName}
+                </a>
+            `);
+            
+            // Adiciona ação de download
+            downloadBtn.on('click', function(e) {
+                e.preventDefault();
+                downloadDocument(index);
+            });
+            
+            $('#download-buttons').append(downloadBtn);
+        });
+    }
+    
+    // Função para realizar download do documento
+    function downloadDocument(index) {
+        const doc = state.downloadedFiles[index];
+        if (!doc) return;
+        
+        const fileName = doc.fileName || `DAMP_${index + 1}.pdf`;
+        
+        // Se for URL direta
+        if (doc.url) {
+            // Cria um link temporário para download
+            const tempLink = document.createElement('a');
+            tempLink.href = doc.url;
+            tempLink.target = '_blank';
+            tempLink.download = fileName;
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            return;
+        }
+        
+        // Se for base64
+        if (doc.base64) {
+            // Remove header base64 se existir (ex: "data:application/pdf;base64,")
+            let base64Data = doc.base64;
+            if (base64Data.includes(',')) {
+                base64Data = base64Data.split(',')[1];
+            }
+            
+            // Determina o tipo MIME
+            let mimeType = 'application/pdf';
+            if (fileName.toLowerCase().endsWith('.png')) mimeType = 'image/png';
+            if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
+            
+            // Cria Blob e URL para download
+            const byteCharacters = atob(base64Data);
+            const byteArrays = [];
+            
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            
+            const blob = new Blob(byteArrays, {type: mimeType});
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // Cria link para download
+            const tempLink = document.createElement('a');
+            tempLink.href = blobUrl;
+            tempLink.download = fileName;
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            
+            // Limpa recursos
+            setTimeout(() => {
+                document.body.removeChild(tempLink);
+                window.URL.revokeObjectURL(blobUrl);
+            }, 100);
         }
     }
     
     // Desabilita todo o formulário após envio bem-sucedido
     function disableForm() {
-        $('#form-debito-fgts input, #form-debito-fgts select, #form-debito-fgts button').prop('disabled', true);
-        $('#voltarDashboardBtn').prop('disabled', false); // Mantém o botão de voltar habilitado
+        $('#form-debito-fgts input, #form-debito-fgts select, #form-debito-fgts button:not(#voltarDashboardBtn)').prop('disabled', true);
+        $('.bot-option').css('cursor', 'default').off('click');
+        
+        // Mostra mensagem sugerindo voltar ao dashboard
+        showStatus('Para iniciar um novo débito FGTS, volte ao Dashboard.', 'info', false);
     }
 
     // --- Autosave e Gerenciamento de Estado ---
@@ -864,6 +1134,7 @@ $(document).ready(function() {
             const formData = {
                 dealId: state.dealId,
                 timestamp: new Date().toISOString(),
+                selectedBotType: state.selectedBotType,
                 generalData: {
                     numeroContato: $('#fgtsNumeroContato').val(),
                     agencia: $('#fgtsAgencia').val(),
@@ -948,6 +1219,13 @@ $(document).ready(function() {
             $('#fgtsBlocoComplemento').val(formData.generalData.blocoComplemento || '');
             $('#fgtsBairro').val(formData.generalData.bairro || '');
             
+            // Seleciona o tipo de bot
+            if (formData.selectedBotType) {
+                state.selectedBotType = formData.selectedBotType;
+                $('#selectedBotType').val(formData.selectedBotType);
+                $(`.bot-option[data-bot-type="${formData.selectedBotType}"]`).addClass('selected');
+            }
+            
             // Remove o primeiro proponente adicionado automaticamente
             proponentesContainer.find('.proponente-section:not(#proponente-template)').remove();
             
@@ -1029,9 +1307,11 @@ $(document).ready(function() {
     
     function toggleLoading(show, message = 'Processando...') {
         const loading = $('#loading');
-        const loadingText = loading.find('p');
+        const loadingText = $('#loading-message');
         
-        loadingText.text(message);
+        if (loadingText) {
+            loadingText.text(message);
+        }
         
         if (show) {
             loading.removeClass('hidden');
@@ -1080,7 +1360,7 @@ $(document).ready(function() {
         const payload = gatherFormData();
         
         // Confirmação final antes do envio
-        if (confirm('Confirma o envio da solicitação de débito FGTS?')) {
+        if (confirm(`Deseja gerar a DAMP utilizando o processador "${$('.bot-option.selected').find('h6').text()}"?`)) {
             // Envia os dados
             sendToN8N(payload);
         }
