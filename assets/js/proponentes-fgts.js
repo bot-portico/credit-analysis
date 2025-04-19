@@ -1,8 +1,7 @@
 /**
  * Gerenciamento de Proponentes e Contas FGTS
  * 
- * Este arquivo gerencia a adição/remoção dinâmica de proponentes e suas contas FGTS,
- * além de integrar os dados coletados ao payload enviado para o robô
+ * Versão atualizada para trabalhar com o fluxo de wizard
  */
 
 // Configurações
@@ -12,10 +11,13 @@ const MAX_CONTAS_POR_PROPONENTE = 20;
 // Contador de proponentes
 let proponenteCounter = 0;
 
+// Estado global para armazenar os dados dos proponentes e contas FGTS
+window.estado = {
+    proponentes: [],
+    contasFGTS: {}
+};
+
 $(document).ready(function() {
-    // Inicializa com um proponente
-    adicionarProponente();
-    
     // Adicionar proponente
     $("#adicionarProponenteBtn").click(function() {
         adicionarProponente();
@@ -26,18 +28,14 @@ $(document).ready(function() {
         removerProponente(this);
     });
     
-    $(document).on("click", ".adicionar-conta-btn", function() {
-        const proponenteCard = $(this).closest(".card");
-        adicionarContaFGTS(proponenteCard);
-    });
-    
-    $(document).on("click", ".remover-conta-btn", function() {
-        removerContaFGTS(this);
-    });
-    
     // Formatar CPF
     $(document).on("blur", ".proponente-cpf", function() {
         formatarCPF(this);
+    });
+    
+    // Formatar PIS/PASEP
+    $(document).on("blur", ".proponente-pis", function() {
+        formatarPIS(this);
     });
     
     // Formatar número da conta e estabelecimento
@@ -50,19 +48,13 @@ $(document).ready(function() {
         formatarMoeda(this);
     });
     
-    // Inicializar tooltips
-    inicializarTooltips();
+    // Inicializar com um proponente após carregar os dados básicos
+    setTimeout(() => {
+        if (document.querySelectorAll('#proponentesContainer .proponente-card').length === 0) {
+            adicionarProponente();
+        }
+    }, 500);
 });
-
-/**
- * Inicializa tooltips para campos de informação
- */
-function inicializarTooltips() {
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-}
 
 /**
  * Adiciona um novo proponente
@@ -75,6 +67,9 @@ function adicionarProponente() {
     
     proponenteCounter++;
     
+    // Gera um ID único para o proponente
+    const proponenteId = `proponente-${Date.now()}-${proponenteCounter}`;
+    
     // Clonar o template
     const novoProponente = $("#proponente-template").clone();
     novoProponente.removeAttr("id").show();
@@ -82,16 +77,36 @@ function adicionarProponente() {
     // Atualizar o número do proponente
     novoProponente.find(".proponente-numero").text(proponenteCounter);
     
+    // Configurar o ID do proponente para referência
+    novoProponente.attr('data-id', proponenteId);
+    
     // Adicionar ao container
     $("#proponentesContainer").append(novoProponente);
-    
-    // Adicionar primeira conta FGTS automaticamente
-    adicionarContaFGTS(novoProponente);
     
     // Atualizar botões de remoção
     atualizarBotoesRemoverProponente();
     
-    // Marcar o formulário como modificado
+    // Adiciona o proponente ao estado global
+    window.estado.proponentes.push({
+        id: proponenteId,
+        numero: proponenteCounter,
+        nome: '',
+        cpf: '',
+        pis: '',
+        nascimento: '',
+        carteira: '',
+        serie: ''
+    });
+    
+    // Inicializa o array de contas para este proponente
+    window.estado.contasFGTS[proponenteId] = [];
+    
+    // Adiciona listeners para os campos do proponente
+    novoProponente.find("input").on("change", function() {
+        atualizarDadosProponente(proponenteId);
+    });
+    
+    // Marca o formulário como modificado
     marcarFormularioModificado();
     
     return novoProponente;
@@ -102,6 +117,7 @@ function adicionarProponente() {
  */
 function removerProponente(btn) {
     const proponenteCard = $(btn).closest(".card");
+    const proponenteId = proponenteCard.data('id');
     
     // Animação de remoção
     proponenteCard.css({
@@ -124,7 +140,11 @@ function removerProponente(btn) {
         // Atualiza os botões de remoção
         atualizarBotoesRemoverProponente();
         
-        // Marcar o formulário como modificado
+        // Remove o proponente do estado global
+        window.estado.proponentes = window.estado.proponentes.filter(p => p.id !== proponenteId);
+        delete window.estado.contasFGTS[proponenteId];
+        
+        // Marca o formulário como modificado
         marcarFormularioModificado();
     }, 300);
 }
@@ -143,87 +163,118 @@ function atualizarBotoesRemoverProponente() {
 }
 
 /**
- * Adiciona uma nova conta FGTS a um proponente
+ * Atualiza os dados de um proponente no estado global
  */
-function adicionarContaFGTS(proponenteCard) {
-    const contasContainer = proponenteCard.find(".contas-fgts-container");
-    const contasExistentes = contasContainer.children().length;
+function atualizarDadosProponente(proponenteId) {
+    const proponenteCard = $(`.proponente-card[data-id="${proponenteId}"]`);
     
-    if (contasExistentes >= MAX_CONTAS_POR_PROPONENTE) {
-        mostrarAlerta(`Máximo de ${MAX_CONTAS_POR_PROPONENTE} contas FGTS por proponente atingido.`, 'warning');
-        return;
+    if (proponenteCard.length) {
+        const proponenteIndex = window.estado.proponentes.findIndex(p => p.id === proponenteId);
+        
+        if (proponenteIndex !== -1) {
+            window.estado.proponentes[proponenteIndex] = {
+                id: proponenteId,
+                numero: parseInt(proponenteCard.find(".proponente-numero").text()),
+                nome: proponenteCard.find(".proponente-nome").val(),
+                cpf: proponenteCard.find(".proponente-cpf").val(),
+                pis: proponenteCard.find(".proponente-pis").val(),
+                nascimento: proponenteCard.find(".proponente-nascimento").val(),
+                carteira: proponenteCard.find(".proponente-carteira").val(),
+                serie: proponenteCard.find(".proponente-serie").val()
+            };
+        }
     }
     
-    // Clonar o template
-    const novaConta = $("#conta-fgts-template").clone();
-    novaConta.removeAttr("id");
-    
-    // Atualizar o número da conta
-    novaConta.find(".conta-numero-label").text(`Conta FGTS ${contasExistentes + 1}`);
-    
-    // Exibir a nova conta com animação
-    novaConta.css('display', 'none');
-    contasContainer.append(novaConta);
-    novaConta.fadeIn(300);
-    
-    // Atualizar o contador
-    proponenteCard.find(".contas-counter").text(contasExistentes + 1);
-    
-    // Atualizar botões de remoção
-    atualizarBotoesRemoverConta(contasContainer);
-    
-    // Marcar o formulário como modificado
     marcarFormularioModificado();
+}
+
+/**
+ * Adiciona uma nova conta FGTS para um proponente
+ */
+function adicionarContaFGTS(proponenteId) {
+    const contasProponente = window.estado.contasFGTS[proponenteId] || [];
     
-    // Inicializar tooltips para os novos elementos
-    inicializarTooltips();
+    if (contasProponente.length >= MAX_CONTAS_POR_PROPONENTE) {
+        mostrarAlerta(`Máximo de ${MAX_CONTAS_POR_PROPONENTE} contas FGTS por proponente atingido.`, 'warning');
+        return null;
+    }
+    
+    // Gera um ID único para a conta
+    const contaId = `conta-${Date.now()}-${contasProponente.length + 1}`;
+    
+    // Cria a nova conta no estado global
+    const novaConta = {
+        id: contaId,
+        proponenteId: proponenteId,
+        numero: contasProponente.length + 1,
+        situacao: '',
+        estabelecimento: '',
+        numero: '',
+        sureg: '',
+        valor: '',
+        empregador: ''
+    };
+    
+    // Adiciona ao estado global
+    if (!window.estado.contasFGTS[proponenteId]) {
+        window.estado.contasFGTS[proponenteId] = [];
+    }
+    
+    window.estado.contasFGTS[proponenteId].push(novaConta);
+    
+    // Marca o formulário como modificado
+    marcarFormularioModificado();
     
     return novaConta;
 }
 
 /**
- * Remove uma conta FGTS
+ * Atualiza os dados das contas FGTS no estado global
+ * a partir dos dados preenchidos na interface
  */
-function removerContaFGTS(btn) {
-    const contaCard = $(btn).closest(".conta-fgts-card");
-    const contasContainer = contaCard.parent();
-    const proponenteCard = contasContainer.closest(".card");
+window.atualizarContasFGTS = function() {
+    const contasContainer = document.getElementById('contasFGTSContainer');
     
-    // Animação de remoção
-    contaCard.fadeOut(300, function() {
-        $(this).remove();
+    if (!contasContainer) return;
+    
+    // Para cada proponente no container de contas
+    const proponentesElements = contasContainer.querySelectorAll('.proponente-fgts');
+    
+    proponentesElements.forEach(proponenteElement => {
+        const proponenteId = proponenteElement.dataset.proponenteId;
         
-        // Renumerar contas
-        let contaCounter = 0;
-        contasContainer.find(".conta-fgts-card").each(function() {
-            contaCounter++;
-            $(this).find(".conta-numero-label").text(`Conta FGTS ${contaCounter}`);
+        // Limpa o array de contas deste proponente
+        window.estado.contasFGTS[proponenteId] = [];
+        
+        // Adiciona cada conta encontrada na interface
+        const contasElements = proponenteElement.querySelectorAll('.conta-fgts-card');
+        
+        contasElements.forEach((contaElement, index) => {
+            const conta = {
+                id: contaElement.dataset.contaId,
+                proponenteId: proponenteId,
+                numero: index + 1,
+                situacao: contaElement.querySelector('.conta-situacao').value,
+                estabelecimento: contaElement.querySelector('.conta-estabelecimento').value,
+                numero: contaElement.querySelector('.conta-numero').value,
+                sureg: contaElement.querySelector('.conta-sureg').value,
+                valor: contaElement.querySelector('.conta-valor').value,
+                empregador: contaElement.querySelector('.conta-empregador').value
+            };
+            
+            window.estado.contasFGTS[proponenteId].push(conta);
         });
-        
-        // Atualizar contador
-        const contasCount = contasContainer.children().length;
-        proponenteCard.find(".contas-counter").text(contasCount);
-        
-        // Atualizar botões de remoção
-        atualizarBotoesRemoverConta(contasContainer);
-        
-        // Marcar o formulário como modificado
-        marcarFormularioModificado();
     });
-}
+    
+    marcarFormularioModificado();
+};
 
 /**
- * Atualiza a visibilidade dos botões de remoção de contas
+ * Retorna as contas FGTS de um proponente
  */
-function atualizarBotoesRemoverConta(contasContainer) {
-    const contas = contasContainer.children();
-    
-    if (contas.length <= 1) {
-        contas.find(".remover-conta-btn").hide();
-    } else {
-        contas.find(".remover-conta-btn").show();
-    }
-}
+window.getContasFGTSByProponente = function(proponenteId) {
+    return window.estado.contasFGTS[proponenteId] || [];
+};
 
 /**
  * Formata um CPF
@@ -245,6 +296,44 @@ function formatarCPF(input) {
     }
     
     $(input).val(value);
+    
+    // Atualiza o estado do proponente
+    const proponenteCard = $(input).closest('.proponente-card');
+    const proponenteId = proponenteCard.data('id');
+    
+    if (proponenteId) {
+        atualizarDadosProponente(proponenteId);
+    }
+}
+
+/**
+ * Formata um PIS/PASEP
+ */
+function formatarPIS(input) {
+    let value = $(input).val().replace(/\D/g, '');
+    
+    if (value.length > 11) {
+        value = value.substring(0, 11);
+    }
+    
+    // Aplica a máscara
+    if (value.length > 9) {
+        value = value.replace(/^(\d{3})(\d{5})(\d{2})(\d{1})$/, "$1.$2.$3-$4");
+    } else if (value.length > 7) {
+        value = value.replace(/^(\d{3})(\d{5})(\d{1,2})$/, "$1.$2.$3");
+    } else if (value.length > 2) {
+        value = value.replace(/^(\d{3})(\d{1,5})$/, "$1.$2");
+    }
+    
+    $(input).val(value);
+    
+    // Atualiza o estado do proponente
+    const proponenteCard = $(input).closest('.proponente-card');
+    const proponenteId = proponenteCard.data('id');
+    
+    if (proponenteId) {
+        atualizarDadosProponente(proponenteId);
+    }
 }
 
 /**
@@ -270,21 +359,11 @@ function formatarMoeda(input) {
  * Mostra um alerta temporário
  */
 function mostrarAlerta(mensagem, tipo = 'info') {
-    const alertEl = $('<div>')
-        .addClass(`alert alert-${tipo} alert-dismissible fade show`)
-        .attr('role', 'alert')
-        .html(`
-            ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `);
-    
-    // Adiciona o alerta na página
-    $("#status-envio").html(alertEl).removeClass('d-none');
-    
-    // Remove após 3 segundos
-    setTimeout(() => {
-        alertEl.alert('close');
-    }, 3000);
+    if (window.wizardController) {
+        window.wizardController.showStatus(mensagem, tipo);
+    } else {
+        alert(mensagem);
+    }
 }
 
 /**
@@ -300,44 +379,38 @@ function marcarFormularioModificado() {
  * Coleta os dados de proponentes e contas FGTS para o payload
  * Esta função deve ser chamada pelo gatherFormData no código principal
  */
-function coletarDadosProponentesEContas() {
+window.coletarDadosProponentesEContas = function() {
+    // Retorna os dados direto do estado global
     const pessoas = [];
     
-    // Percorre cada proponente
-    $("#proponentesContainer .card").each(function() {
-        const proponenteCard = $(this);
+    // Para cada proponente no estado
+    window.estado.proponentes.forEach(proponente => {
+        const contas = window.estado.contasFGTS[proponente.id] || [];
         
         const pessoa = {
-            nome: proponenteCard.find(".proponente-nome").val(),
-            cpf: proponenteCard.find(".proponente-cpf").val().replace(/\D/g, ''),
-            pis: proponenteCard.find(".proponente-pis").val(),
-            nascimento: proponenteCard.find(".proponente-nascimento").val(),
-            carteira: proponenteCard.find(".proponente-carteira").val(),
-            serie: proponenteCard.find(".proponente-serie").val(),
+            nome: proponente.nome,
+            cpf: proponente.cpf.replace(/\D/g, ''),
+            pis: proponente.pis,
+            nascimento: proponente.nascimento,
+            carteira: proponente.carteira,
+            serie: proponente.serie,
             contas: []
         };
         
-        // Percorre cada conta FGTS deste proponente
-        proponenteCard.find(".contas-fgts-container .conta-fgts-card").each(function() {
-            const contaCard = $(this);
-            
-            const conta = {
-                situacao: contaCard.find(".conta-situacao").val(),
-                estabelecimento: contaCard.find(".conta-estabelecimento").val(),
-                numero: contaCard.find(".conta-numero").val(),
-                sureg: contaCard.find(".conta-sureg").val(),
-                valor: parseFloat(contaCard.find(".conta-valor").val()) || 0,
-                empregador: contaCard.find(".conta-empregador").val() || ''
-            };
-            
-            pessoa.contas.push(conta);
+        // Adiciona cada conta do proponente
+        contas.forEach(conta => {
+            pessoa.contas.push({
+                situacao: conta.situacao,
+                estabelecimento: conta.estabelecimento,
+                numero: conta.numero,
+                sureg: conta.sureg,
+                valor: parseFloat(conta.valor) || 0,
+                empregador: conta.empregador || ''
+            });
         });
         
         pessoas.push(pessoa);
     });
     
     return pessoas;
-}
-
-// Exportando a função para uso no debito-fgts.js
-window.coletarDadosProponentesEContas = coletarDadosProponentesEContas;
+};
