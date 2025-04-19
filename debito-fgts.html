@@ -6,484 +6,7 @@
     <title>Débito FGTS - Sistema de Análise de Crédito</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #3f6ad8;
-            --primary-dark: #2952b3;
-            --secondary: #6c757d;
-            --success: #3ac47d;
-            --info: #16aaff;
-            --warning: #f7b924;
-            --danger: #d92550;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --focus: rgba(63, 106, 216, 0.25);
-            --border-radius: 0.5rem;
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            background-color: #f5f7fb;
-            color: #495057;
-        }
-
-        /* Header Styles */
-        .page-header {
-            background: linear-gradient(135deg, #3f6ad8, #2f4cad);
-            color: white;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 60%);
-            transform: rotate(30deg);
-        }
-
-        /* Card Styles */
-        .card {
-            border: none;
-            border-radius: var(--border-radius);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        }
-
-        .card-header {
-            background: linear-gradient(to right, #f8f9fa, #f0f2f5);
-            border-bottom: 1px solid #e9ecef;
-            padding: 1rem 1.5rem;
-            font-weight: 600;
-        }
-
-        /* Section Styling */
-        .section-title {
-            position: relative;
-            padding-left: 1rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .section-title::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background-color: var(--primary);
-            border-radius: 4px;
-        }
-
-        /* Proponent Cards */
-        .proponente-card {
-            position: relative;
-            border-radius: var(--border-radius);
-            background-color: white;
-        }
-
-        .proponente-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background-color: var(--primary);
-            border-radius: 4px 0 0 4px;
-        }
-
-        /* FGTS Account Cards */
-        .conta-fgts-card {
-            position: relative;
-            background-color: #f8fafc;
-            margin: 1rem 0;
-            border-radius: var(--border-radius);
-            border: 1px solid #e9ecef;
-        }
-
-        .conta-fgts-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background-color: var(--info);
-            border-radius: 4px 0 0 4px;
-        }
-
-        /* Form Controls */
-        .form-control, .form-select {
-            border-radius: 0.5rem;
-            padding: 0.6rem 1rem;
-            border: 1px solid #dce4f1;
-            font-size: 0.9rem;
-        }
-
-        .form-control:focus, .form-select:focus {
-            box-shadow: 0 0 0 0.2rem var(--focus);
-            border-color: var(--primary);
-        }
-
-        .input-group-text {
-            background-color: #f8f9fa;
-            border-color: #dce4f1;
-            border-radius: 0.5rem 0 0 0.5rem;
-        }
-
-        .money-input {
-            text-align: right;
-            font-family: monospace;
-        }
-        
-        /* Buttons */
-        .btn {
-            border-radius: 0.5rem;
-            font-weight: 500;
-            padding: 0.5rem 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background-color: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-            border-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(63, 106, 216, 0.3);
-        }
-
-        .btn-add-conta {
-            color: var(--info);
-            border-color: var(--info);
-            background-color: white;
-            font-size: 0.85rem;
-        }
-
-        .btn-add-conta:hover {
-            background-color: var(--info);
-            color: white;
-        }
-
-        .btn-add-proponente {
-            color: white;
-            background-color: var(--primary);
-            padding: 0.7rem 1.5rem;
-        }
-
-        .btn-add-proponente:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(63, 106, 216, 0.3);
-        }
-
-        .btn-outline-danger {
-            color: var(--danger);
-            border-color: var(--danger);
-        }
-
-        .btn-outline-danger:hover {
-            background-color: var(--danger);
-            color: white;
-        }
-
-        /* Status Badges */
-        .status-badge {
-            padding: 0.35rem 0.75rem;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .status-badge i {
-            margin-right: 0.35rem;
-        }
-
-        .status-badge.pending {
-            background-color: #fff8e2;
-            color: #b78105;
-        }
-
-        .status-badge.success {
-            background-color: #e6f7ef;
-            color: #1e9c61;
-        }
-
-        .status-badge.error {
-            background-color: #feebef;
-            color: #b91c1c;
-        }
-
-        /* Bot Selector */
-        .bot-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .bot-option {
-            background-color: white;
-            border: 2px solid #e9ecef;
-            border-radius: var(--border-radius);
-            padding: 1.25rem 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .bot-option:hover {
-            border-color: #cfd5dc;
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .bot-option.selected {
-            border-color: var(--primary);
-            background-color: #f0f6ff;
-        }
-
-        .bot-option i {
-            font-size: 2rem;
-            margin-bottom: 0.75rem;
-            color: #6c757d;
-            transition: color 0.3s ease;
-        }
-
-        .bot-option.selected i {
-            color: var(--primary);
-        }
-
-        .bot-option h6 {
-            margin: 0;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-
-        .bot-option p {
-            margin-top: 0.5rem;
-            font-size: 0.85rem;
-            color: #6c757d;
-            line-height: 1.3;
-        }
-
-        /* Loading State */
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(33, 37, 41, 0.75);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            backdrop-filter: blur(3px);
-        }
-
-        #loading.hidden {
-            display: none;
-        }
-
-        .loading-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            max-width: 90%;
-            width: 450px;
-            animation: fadeInUp 0.5s ease forwards;
-        }
-
-        .progress {
-            height: 0.75rem;
-            border-radius: 30px;
-            background-color: #e9ecef;
-            overflow: hidden;
-            margin: 1rem 0;
-        }
-
-        .progress-bar {
-            background: linear-gradient(90deg, var(--primary), #6e8fea);
-            height: 100%;
-            border-radius: 30px;
-            transition: width 0.5s ease;
-            position: relative;
-        }
-
-        .progress-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(
-                45deg,
-                rgba(255, 255, 255, 0.15) 25%,
-                transparent 25%,
-                transparent 50%,
-                rgba(255, 255, 255, 0.15) 50%,
-                rgba(255, 255, 255, 0.15) 75%,
-                transparent 75%
-            );
-            background-size: 1rem 1rem;
-            animation: progress-animation 1s linear infinite;
-        }
-
-        @keyframes progress-animation {
-            from { background-position: 1rem 0; }
-            to { background-position: 0 0; }
-        }
-
-        /* Download Area */
-        .download-area {
-            border-radius: var(--border-radius);
-            border: 2px dashed #d1e1ff;
-            padding: 2.5rem 2rem;
-            text-align: center;
-            margin: 1.5rem 0;
-            transition: all 0.3s ease;
-            background-color: #f8faff;
-        }
-
-        .download-area:hover {
-            border-color: var(--primary);
-            background-color: #f0f6ff;
-        }
-
-        .download-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.75rem 1.5rem;
-            background-color: var(--primary);
-            color: white;
-            border-radius: var(--border-radius);
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .download-btn:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(63, 106, 216, 0.3);
-            color: white;
-        }
-
-        .download-btn i {
-            margin-right: 0.75rem;
-            font-size: 1.1rem;
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeInUp 0.4s ease forwards;
-        }
-
-        /* Tooltip styling */
-        .info-tooltip {
-            color: #adb5bd;
-            margin-left: 0.35rem;
-            cursor: pointer;
-            transition: color 0.2s ease;
-        }
-
-        .info-tooltip:hover {
-            color: var(--primary);
-        }
-
-        /* Footer styling */
-        footer {
-            background-color: #343a40;
-            color: white;
-            padding: 2rem 0;
-            margin-top: 3rem;
-        }
-
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .page-header {
-                padding: 1rem 0;
-            }
-            
-            .card-header {
-                padding: 0.75rem 1rem;
-            }
-            
-            .card-body {
-                padding: 1.25rem;
-            }
-            
-            .bot-selector {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            }
-            
-            .bot-option i {
-                font-size: 1.5rem;
-            }
-            
-            .bot-option h6 {
-                font-size: 0.9rem;
-            }
-            
-            .bot-option p {
-                font-size: 0.75rem;
-            }
-            
-            .section-title {
-                font-size: 1.25rem;
-            }
-            
-            .btn {
-                padding: 0.4rem 1rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/debito-fgts.css">
 </head>
 <body>
     <!-- Loading overlay com progresso -->
@@ -526,57 +49,6 @@
     </header>
 
     <main class="container pb-5">
-        <!-- Resumo da Operação -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h2 class="h5 mb-0">Resumo da Operação</h2>
-                <span id="operation-status" class="status-badge pending">
-                    <i class="fas fa-clock"></i> Em processamento
-                </span>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3 col-6">
-                        <label class="form-label small text-muted mb-1">ID da Operação</label>
-                        <p id="dealId" class="mb-0 fw-medium">Carregando...</p>
-                    </div>
-                    <div class="col-md-5 col-6">
-                        <label class="form-label small text-muted mb-1">Nome da Operação</label>
-                        <p id="dealName" class="mb-0 fw-medium">Carregando...</p>
-                    </div>
-                    <div class="col-md-4 col-12">
-                        <label class="form-label small text-muted mb-1">Cliente Principal</label>
-                        <div class="d-flex align-items-center">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px; font-weight: 600;">
-                                <span id="clientInitials">--</span>
-                            </div>
-                            <div>
-                                <p id="contactName" class="mb-0 fw-medium">Carregando...</p>
-                                <small id="contactCPF" class="text-muted">000.000.000-00</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <hr>
-                
-                <div class="row g-3">
-                    <div class="col-md-4 col-6">
-                        <label class="form-label small text-muted mb-1">Valor Financiamento</label>
-                        <p id="valorFinanciamento" class="mb-0 fw-medium">R$ 0,00</p>
-                    </div>
-                    <div class="col-md-4 col-6">
-                        <label class="form-label small text-muted mb-1">Valor Compra/Venda</label>
-                        <p id="valorCompraVenda" class="mb-0 fw-medium">R$ 0,00</p>
-                    </div>
-                    <div class="col-md-4 col-12">
-                        <label class="form-label small text-muted mb-1">Valor Total FGTS a Debitar</label>
-                        <p id="valorFGTSDebitar" class="mb-0 fw-medium">R$ 0,00</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Área de Download de DAMP (inicialmente oculta) -->
         <div id="download-area" class="download-area d-none">
             <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
@@ -587,126 +59,300 @@
             </div>
         </div>
 
-        <!-- Formulário de Débito FGTS -->
+        <!-- Formulário de Débito FGTS em Wizard -->
         <form id="form-debito-fgts">
-            <!-- Seleção do Tipo de Bot -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="h5 mb-0">Tipo de Processamento</h3>
+            <!-- Wizard Navigation -->
+            <div class="wizard-navigation mb-4">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 16.66%" aria-valuenow="16.66" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
-                <div class="card-body">
-                    <p class="mb-3">Selecione o tipo de processamento desejado:</p>
-                    <div class="bot-selector">
-                        <div class="bot-option" data-bot-type="BotIndividual">
-                            <i class="fas fa-user"></i>
-                            <h6>Individual</h6>
-                            <p>Débito de FGTS individual com geração de DAMP</p>
-                        </div>
-                        <div class="bot-option" data-bot-type="BotDampManual">
-                            <i class="fas fa-file-alt"></i>
-                            <h6>DAMP Manual</h6>
-                            <p>Apenas impressão do documento sem débito</p>
-                        </div>
-                        <div class="bot-option" data-bot-type="botConsultaOperacao">
-                            <i class="fas fa-search"></i>
-                            <h6>Consulta Operação</h6>
-                            <p>Consulta de dados e status da operação</p>
-                        </div>
-                        <div class="bot-option" data-bot-type="botDampCIWEB">
-                            <i class="fas fa-globe"></i>
-                            <h6>DAMP CIWEB</h6>
-                            <p>Débito via sistema CIWEB</p>
-                        </div>
-                        <div class="bot-option" data-bot-type="BotEmpreendimento">
-                            <i class="fas fa-building"></i>
-                            <h6>Empreendimento</h6>
-                            <p>Débito para empreendimentos imobiliários</p>
-                        </div>
-                    </div>
-                    <input type="hidden" id="selectedBotType" name="botType" required>
-                </div>
+                <ul class="nav nav-pills nav-justified">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="step1-tab" data-step="1">
+                            <span class="step-number">1</span>
+                            <span class="step-title">Identificação</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step2-tab" data-step="2">
+                            <span class="step-number">2</span>
+                            <span class="step-title">Processamento</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step3-tab" data-step="3">
+                            <span class="step-number">3</span>
+                            <span class="step-title">Dados do Imóvel</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step4-tab" data-step="4">
+                            <span class="step-number">4</span>
+                            <span class="step-title">Proponentes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step5-tab" data-step="5">
+                            <span class="step-number">5</span>
+                            <span class="step-title">Contas FGTS</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step6-tab" data-step="6">
+                            <span class="step-number">6</span>
+                            <span class="step-title">Confirmação</span>
+                        </a>
+                    </li>
+                </ul>
             </div>
-
-            <!-- Informações Gerais -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="h5 mb-0">Informações Gerais da Solicitação</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="fgtsNumeroContato" class="form-label">
-                                Nº Protocolo FGTS
-                                <i class="fas fa-circle-info info-tooltip" data-bs-toggle="tooltip" title="Número de protocolo de atendimento do FGTS (opcional)"></i>
-                            </label>
-                            <input type="text" id="fgtsNumeroContato" class="form-control" placeholder="Protocolo de atendimento">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="fgtsAgencia" class="form-label">Agência Vinculada <span class="text-danger">*</span></label>
-                            <input type="text" id="fgtsAgencia" class="form-control" required placeholder="Ex: 0001">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="fgtsContrato" class="form-label">Nº Contrato Financiamento <span class="text-danger">*</span></label>
-                            <input type="text" id="fgtsContrato" class="form-control" required placeholder="Ex: 8448000000000">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="fgtsMatriculaImovel" class="form-label">Matrícula do Imóvel <span class="text-danger">*</span></label>
-                            <input type="text" id="fgtsMatriculaImovel" class="form-control" required placeholder="Ex: 123456">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="fgtsTipoComplemento" class="form-label">Tipo Complemento Imóvel <span class="text-danger">*</span></label>
-                            <select id="fgtsTipoComplemento" class="form-select" required>
-                                <option value="" selected disabled>Selecione...</option>
-                                <option value="APARTAMENTO">APARTAMENTO</option>
-                                <option value="CASA">CASA</option>
-                                <option value="LOTE">LOTE</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="fgtsNumeroComplemento" class="form-label">Nº Complemento (Apto/Casa)</label>
-                            <input type="text" id="fgtsNumeroComplemento" class="form-control" placeholder="Ex: 101">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="fgtsBlocoComplemento" class="form-label">Bloco/Torre (Opcional)</label>
-                            <input type="text" id="fgtsBlocoComplemento" class="form-control" placeholder="Ex: Bloco A">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="fgtsBairro" class="form-label">Bairro</label>
-                            <input type="text" id="fgtsBairro" class="form-control" placeholder="Bairro do imóvel">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Container para Proponentes -->
-            <h3 class="section-title mt-4">Proponentes e Contas FGTS</h3>
             
-            <!-- Container para proponentes -->
-            <div id="proponentesContainer">
-                <!-- Os cards de proponente serão adicionados aqui pelo JavaScript -->
-            </div>
+            <div id="status-envio" class="alert alert-info d-none mb-4" role="alert"></div>
 
-            <!-- Botão para adicionar proponente -->
-            <div class="text-center mt-4">
-                <button id="adicionarProponenteBtn" type="button" class="btn btn-primary">
-                    <i class="fas fa-user-plus me-2"></i> Adicionar Outro Proponente
-                </button>
-            </div>
-
-            <!-- Área de Envio -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                        <div class="text-center text-md-start mb-3 mb-md-0">
-                            <h5 class="mb-1">Pronto para gerar a DAMP?</h5>
-                            <p class="text-muted mb-0">Confira todos os dados antes de prosseguir</p>
+            <!-- Step 1: Identificação da Operação -->
+            <div class="wizard-step" id="step1">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Identificação da Operação</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">ID da Operação</label>
+                                <p id="dealId" class="form-control-static">Carregando...</p>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Nome da Operação</label>
+                                <p id="dealName" class="form-control-static">Carregando...</p>
+                            </div>
                         </div>
-                        <div id="status-envio" class="alert mb-3 mb-md-0 mx-2 d-none" role="alert"></div>
-                        <button type="submit" id="enviarSolicitacaoBtn" class="btn btn-primary btn-lg">
-                            <i class="fas fa-paper-plane me-2"></i> Gerar DAMP
+                        
+                        <hr>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <h5 class="mb-3">Cliente Principal</h5>
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; font-weight: 600;">
+                                        <span id="clientInitials">--</span>
+                                    </div>
+                                    <div>
+                                        <h6 id="contactName" class="mb-1">Carregando...</h6>
+                                        <p id="contactCPF" class="text-muted mb-0">000.000.000-00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Valor Financiamento</label>
+                                <p id="valorFinanciamento" class="form-control-static">R$ 0,00</p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Valor Compra/Venda</label>
+                                <p id="valorCompraVenda" class="form-control-static">R$ 0,00</p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Valor Total FGTS a Debitar</label>
+                                <p id="valorFGTSDebitar" class="form-control-static">R$ 0,00</p>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <label for="fgtsNumeroContato" class="form-label">
+                                    Nº Protocolo FGTS
+                                    <i class="fas fa-circle-info info-tooltip" data-bs-toggle="tooltip" title="Número de protocolo de atendimento do FGTS (opcional)"></i>
+                                </label>
+                                <input type="text" id="fgtsNumeroContato" class="form-control" placeholder="Protocolo de atendimento">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Tipo de Processamento -->
+            <div class="wizard-step d-none" id="step2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Tipo de Processamento</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-4">Selecione o tipo de processamento desejado:</p>
+                        
+                        <div class="bot-selector">
+                            <div class="bot-option" data-bot-type="BotIndividual">
+                                <i class="fas fa-user"></i>
+                                <h6>Individual</h6>
+                                <p>Débito de FGTS individual com geração de DAMP</p>
+                            </div>
+                            <div class="bot-option" data-bot-type="BotDampManual">
+                                <i class="fas fa-file-alt"></i>
+                                <h6>DAMP Manual</h6>
+                                <p>Apenas impressão do documento sem débito</p>
+                            </div>
+                            <div class="bot-option" data-bot-type="botConsultaOperacao">
+                                <i class="fas fa-search"></i>
+                                <h6>Consulta Operação</h6>
+                                <p>Consulta de dados e status da operação</p>
+                            </div>
+                            <div class="bot-option" data-bot-type="botDampCIWEB">
+                                <i class="fas fa-globe"></i>
+                                <h6>DAMP CIWEB</h6>
+                                <p>Débito via sistema CIWEB</p>
+                            </div>
+                            <div class="bot-option" data-bot-type="BotEmpreendimento">
+                                <i class="fas fa-building"></i>
+                                <h6>Empreendimento</h6>
+                                <p>Débito para empreendimentos imobiliários</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="selectedBotType" name="botType" required>
+                        
+                        <div class="alert alert-info mt-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span>O tempo estimado de processamento para o tipo selecionado é de <strong><span id="estimated-processing-time">--</span> minutos</strong>.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Dados do Imóvel -->
+            <div class="wizard-step d-none" id="step3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Dados do Imóvel e Contrato</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="fgtsAgencia" class="form-label">Agência Vinculada <span class="text-danger">*</span></label>
+                                <input type="text" id="fgtsAgencia" class="form-control" required placeholder="Ex: 0001">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fgtsContrato" class="form-label">Nº Contrato Financiamento <span class="text-danger">*</span></label>
+                                <input type="text" id="fgtsContrato" class="form-control" required placeholder="Ex: 8448000000000">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fgtsMatriculaImovel" class="form-label">Matrícula do Imóvel <span class="text-danger">*</span></label>
+                                <input type="text" id="fgtsMatriculaImovel" class="form-control" required placeholder="Ex: 123456">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fgtsTipoComplemento" class="form-label">Tipo Complemento Imóvel <span class="text-danger">*</span></label>
+                                <select id="fgtsTipoComplemento" class="form-select" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                    <option value="APARTAMENTO">APARTAMENTO</option>
+                                    <option value="CASA">CASA</option>
+                                    <option value="LOTE">LOTE</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fgtsNumeroComplemento" class="form-label">Nº Complemento (Apto/Casa)</label>
+                                <input type="text" id="fgtsNumeroComplemento" class="form-control" placeholder="Ex: 101">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fgtsBlocoComplemento" class="form-label">Bloco/Torre (Opcional)</label>
+                                <input type="text" id="fgtsBlocoComplemento" class="form-control" placeholder="Ex: Bloco A">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fgtsBairro" class="form-label">Bairro</label>
+                                <input type="text" id="fgtsBairro" class="form-control" placeholder="Bairro do imóvel">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Proponentes -->
+            <div class="wizard-step d-none" id="step4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="h5 mb-0">Proponentes</h3>
+                        <button id="adicionarProponenteBtn" type="button" class="btn btn-primary btn-sm">
+                            <i class="fas fa-user-plus me-1"></i> Adicionar Proponente
                         </button>
                     </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Adicione os proponentes que utilizarão o FGTS. Cada proponente pode ter uma ou mais contas FGTS. 
+                            Na próxima etapa, você poderá adicionar as contas FGTS para cada proponente.
+                        </div>
+                        
+                        <div id="proponentesContainer">
+                            <!-- Os cards de proponente serão adicionados aqui pelo JavaScript -->
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Step 5: Contas FGTS -->
+            <div class="wizard-step d-none" id="step5">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Contas FGTS dos Proponentes</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Adicione as contas FGTS para cada proponente. Você precisará informar os dados de estabelecimento, código do empregado, SUREG e valores.
+                        </div>
+                        
+                        <div id="contasFGTSContainer">
+                            <!-- Os proponentes e suas contas serão exibidos aqui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Confirmação -->
+            <div class="wizard-step d-none" id="step6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Confirmação dos Dados</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Revise cuidadosamente todos os dados antes de gerar a DAMP. 
+                            Uma vez gerada, a DAMP não poderá ser alterada.
+                        </div>
+                        
+                        <div id="resumoOperacao">
+                            <!-- Resumo da operação será gerado dinamicamente aqui -->
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">Pronto para gerar a DAMP?</h5>
+                                <p class="text-muted mb-0">Após a revisão dos dados, clique no botão ao lado para iniciar o processamento.</p>
+                            </div>
+                            <button type="submit" id="enviarSolicitacaoBtn" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i> Gerar DAMP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Navigation Buttons -->
+            <div class="wizard-footer mt-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" id="prevStepBtn" disabled>
+                    <i class="fas fa-arrow-left me-2"></i> Anterior
+                </button>
+                <button type="button" class="btn btn-primary" id="nextStepBtn">
+                    Próximo <i class="fas fa-arrow-right ms-2"></i>
+                </button>
             </div>
         </form>
     </main>
@@ -728,26 +374,23 @@
                         <li>Pagamento de parte das prestações de financiamento habitacional</li>
                     </ul>
                     
-                    <h6 class="mt-4">Tipos de processamento disponíveis:</h6>
+                    <h6 class="mt-4">Como navegar no assistente de débito FGTS:</h6>
                     <ul>
-                        <li><strong>Individual:</strong> Débito de FGTS individual com geração de DAMP</li>
-                        <li><strong>DAMP Manual:</strong> Apenas impressão do documento sem débito efetivo</li>
-                        <li><strong>Consulta Operação:</strong> Consulta status e dados da operação</li>
-                        <li><strong>DAMP CIWEB:</strong> Débito via sistema CIWEB da CAIXA</li>
-                        <li><strong>Empreendimento:</strong> Débito para empreendimentos imobiliários</li>
+                        <li><strong>Etapa 1 - Identificação:</strong> Confirme os dados da operação e do cliente</li>
+                        <li><strong>Etapa 2 - Processamento:</strong> Escolha o tipo de processamento desejado</li>
+                        <li><strong>Etapa 3 - Dados do Imóvel:</strong> Preencha as informações do imóvel e contrato</li>
+                        <li><strong>Etapa 4 - Proponentes:</strong> Adicione os dados dos proponentes</li>
+                        <li><strong>Etapa 5 - Contas FGTS:</strong> Cadastre as contas FGTS de cada proponente</li>
+                        <li><strong>Etapa 6 - Confirmação:</strong> Revise e confirme todos os dados antes de gerar a DAMP</li>
                     </ul>
                     
-                    <h6 class="mt-4">Informações importantes:</h6>
+                    <h6 class="mt-4">Informações importantes sobre contas FGTS:</h6>
                     <ul>
-                        <li>Cada proponente pode ter uma ou mais contas de FGTS</li>
                         <li>O código do estabelecimento e o código do empregado são informações obrigatórias que constam no extrato do FGTS</li>
                         <li>A SUREG (Superintendência Regional) corresponde ao estado onde a conta foi aberta</li>
                         <li>Contas inativas também podem ser utilizadas para débito</li>
-                        <li>A DAMP (Documento de Autorização para Movimentação da Conta Vinculada do FGTS) é o documento oficial gerado</li>
+                        <li>O valor a debitar não pode exceder o saldo disponível na conta</li>
                     </ul>
-                    
-                    <h6 class="mt-4">Campos obrigatórios:</h6>
-                    <p>Os campos marcados com <span class="text-danger">*</span> são obrigatórios para o processamento do débito.</p>
                     
                     <div class="alert alert-info mt-4">
                         <i class="fas fa-info-circle me-2"></i>
@@ -761,20 +404,6 @@
         </div>
     </div>
 
-    <!-- Rodapé -->
-    <footer>
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="mb-0">&copy; <span id="current-year">2025</span> Sistema de Análise de Crédito</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0">Versão 2.1.5</p>
-                </div>
-            </div>
-        </div>
-    </footer>
-
     <!-- Templates (ocultos) -->
     <div style="display: none;">
         <!-- Template de Proponente -->
@@ -787,49 +416,37 @@
             </div>
             <div class="card-body">
                 <!-- Dados do Proponente -->
-                <div class="row g-3 mb-4">
+                <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Nome Completo <span class="text-danger">*</span></label>
                         <input type="text" class="form-control proponente-nome" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">CPF <span class="text-danger">*</span></label>
                         <input type="text" class="form-control proponente-cpf" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">PIS/PASEP <span class="text-danger">*</span></label>
                         <input type="text" class="form-control proponente-pis" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Data de Nascimento <span class="text-danger">*</span></label>
                         <input type="date" class="form-control proponente-nascimento" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Nº Carteira Trabalho <span class="text-danger">*</span></label>
                         <input type="text" class="form-control proponente-carteira" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Série Carteira Trabalho <span class="text-danger">*</span></label>
                         <input type="text" class="form-control proponente-serie" required>
+                        <div class="invalid-feedback"></div>
                     </div>
-                </div>
-                
-                <!-- Contas FGTS -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">Contas FGTS</h6>
-                    <span class="badge bg-primary rounded-pill contas-counter">0</span>
-                </div>
-                
-                <!-- Container para as contas FGTS -->
-                <div class="contas-fgts-container">
-                    <!-- Aqui serão adicionadas dinamicamente as contas FGTS -->
-                </div>
-                
-                <!-- Botão para adicionar nova conta FGTS -->
-                <div class="mt-3">
-                    <button type="button" class="btn btn-sm btn-outline-primary adicionar-conta-btn">
-                        <i class="fas fa-plus"></i> Adicionar Conta FGTS
-                    </button>
                 </div>
             </div>
         </div>
@@ -852,14 +469,17 @@
                             <option value="INATIVA">INATIVA</option>
                             <option value="BLOQUEADA">BLOQUEADA</option>
                         </select>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Cod. Estabelecimento <span class="text-danger">*</span></label>
                         <input type="text" class="form-control conta-estabelecimento" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Cod. Empregado (Conta) <span class="text-danger">*</span></label>
                         <input type="text" class="form-control conta-numero" required>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">SUREG <span class="text-danger">*</span></label>
@@ -893,6 +513,7 @@
                             <option value="26">26 - AC</option>
                             <option value="27">27 - AP</option>
                         </select>
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Nome do Empregador</label>
@@ -903,16 +524,32 @@
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
                             <input type="number" step="0.01" class="form-control conta-valor" required>
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Rodapé -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; <span id="current-year">2025</span> Sistema de Análise de Crédito</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">Versão 2.1.5</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/wizard-controller.js"></script>
     <script src="js/proponentes-fgts.js"></script>
     <script src="js/debito-fgts.js"></script>
 </body>
