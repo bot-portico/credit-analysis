@@ -1,167 +1,310 @@
+/**
+ * Gerenciamento de Proponentes e Contas FGTS
+ * 
+ * Este arquivo gerencia a adição/remoção dinâmica de proponentes e suas contas FGTS,
+ * além de integrar os dados coletados ao payload enviado para o robô
+ */
+
 // Configurações
 const MAX_PROPONENTES = 10;
 const MAX_CONTAS_POR_PROPONENTE = 20;
 
-// Inicialização
-let proponenteCounter = 0; // Começa com 0 e incrementa antes de adicionar
+// Contador de proponentes
+let proponenteCounter = 0;
 
 $(document).ready(function() {
     // Inicializa com um proponente
     adicionarProponente();
     
-    // Botão de adicionar proponente
+    // Adicionar proponente
     $("#adicionarProponenteBtn").click(function() {
         adicionarProponente();
     });
     
-    // Delegação de eventos para botões dinâmicos
+    // Delegar eventos para elementos dinâmicos
     $(document).on("click", ".remover-proponente-btn", function() {
         removerProponente(this);
     });
     
     $(document).on("click", ".adicionar-conta-btn", function() {
-        const proponenteCard = $(this).closest(".proponente-card");
+        const proponenteCard = $(this).closest(".card");
         adicionarContaFGTS(proponenteCard);
     });
     
     $(document).on("click", ".remover-conta-btn", function() {
         removerContaFGTS(this);
     });
-
-    // Conecta ao formulário principal para adicionar os dados ao envio
-    $("#form-debito-fgts").submit(function(e) {
-        e.preventDefault();
-        submitForm();
+    
+    // Formatar CPF
+    $(document).on("blur", ".proponente-cpf", function() {
+        formatarCPF(this);
     });
+    
+    // Formatar número da conta e estabelecimento
+    $(document).on("input", ".conta-estabelecimento, .conta-numero", function() {
+        $(this).val($(this).val().replace(/\D/g, ''));
+    });
+    
+    // Formatar valores monetários
+    $(document).on("blur", ".conta-valor", function() {
+        formatarMoeda(this);
+    });
+    
+    // Inicializar tooltips
+    inicializarTooltips();
 });
 
-// Adiciona um novo proponente
+/**
+ * Inicializa tooltips para campos de informação
+ */
+function inicializarTooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+/**
+ * Adiciona um novo proponente
+ */
 function adicionarProponente() {
     if (proponenteCounter >= MAX_PROPONENTES) {
-        alert(`Máximo de ${MAX_PROPONENTES} proponentes atingido.`);
+        mostrarAlerta(`Máximo de ${MAX_PROPONENTES} proponentes atingido.`, 'warning');
         return;
     }
     
     proponenteCounter++;
     
-    // Clona o template
+    // Clonar o template
     const novoProponente = $("#proponente-template").clone();
     novoProponente.removeAttr("id").show();
     
-    // Atualiza o número do proponente
-    novoProponente.find("h5").text(`Proponente ${proponenteCounter}`);
+    // Atualizar o número do proponente
+    novoProponente.find(".proponente-numero").text(proponenteCounter);
     
-    // Adiciona à página
+    // Adicionar ao container
     $("#proponentesContainer").append(novoProponente);
     
-    // Adiciona primeira conta FGTS automaticamente
+    // Adicionar primeira conta FGTS automaticamente
     adicionarContaFGTS(novoProponente);
     
-    // Atualiza os botões de remoção
+    // Atualizar botões de remoção
     atualizarBotoesRemoverProponente();
+    
+    // Marcar o formulário como modificado
+    marcarFormularioModificado();
+    
+    return novoProponente;
 }
 
-// Remove um proponente
+/**
+ * Remove um proponente
+ */
 function removerProponente(btn) {
-    $(btn).closest(".proponente-card").remove();
+    const proponenteCard = $(btn).closest(".card");
     
-    // Renumera os proponentes
-    $(".proponente-card").each(function(index) {
-        $(this).find("h5").text(`Proponente ${index + 1}`);
+    // Animação de remoção
+    proponenteCard.css({
+        'transition': 'all 0.3s ease',
+        'opacity': '0',
+        'transform': 'translateY(10px)'
     });
     
-    proponenteCounter--;
-    
-    // Atualiza os botões de remoção
-    atualizarBotoesRemoverProponente();
+    // Remove após a animação
+    setTimeout(() => {
+        proponenteCard.remove();
+        
+        // Renumera os proponentes
+        proponenteCounter = 0;
+        $("#proponentesContainer .card").each(function() {
+            proponenteCounter++;
+            $(this).find(".proponente-numero").text(proponenteCounter);
+        });
+        
+        // Atualiza os botões de remoção
+        atualizarBotoesRemoverProponente();
+        
+        // Marcar o formulário como modificado
+        marcarFormularioModificado();
+    }, 300);
 }
 
-// Atualiza a visibilidade dos botões de remoção de proponentes
+/**
+ * Atualiza a visibilidade dos botões de remoção de proponentes
+ */
 function atualizarBotoesRemoverProponente() {
-    if ($(".proponente-card").length <= 1) {
-        $(".remover-proponente-btn").hide();
+    const proponentes = $("#proponentesContainer .card");
+    
+    if (proponentes.length <= 1) {
+        proponentes.find(".remover-proponente-btn").hide();
     } else {
-        $(".remover-proponente-btn").show();
+        proponentes.find(".remover-proponente-btn").show();
     }
 }
 
-// Adiciona uma nova conta FGTS a um proponente
+/**
+ * Adiciona uma nova conta FGTS a um proponente
+ */
 function adicionarContaFGTS(proponenteCard) {
-    const container = proponenteCard.find(".contas-fgts-container");
-    const contasCount = container.children().length;
+    const contasContainer = proponenteCard.find(".contas-fgts-container");
+    const contasExistentes = contasContainer.children().length;
     
-    if (contasCount >= MAX_CONTAS_POR_PROPONENTE) {
-        alert(`Máximo de ${MAX_CONTAS_POR_PROPONENTE} contas FGTS por proponente atingido.`);
+    if (contasExistentes >= MAX_CONTAS_POR_PROPONENTE) {
+        mostrarAlerta(`Máximo de ${MAX_CONTAS_POR_PROPONENTE} contas FGTS por proponente atingido.`, 'warning');
         return;
     }
     
-    // Clona o template
-    const novaConta = $(".conta-fgts-template").children().first().clone();
+    // Clonar o template
+    const novaConta = $("#conta-fgts-template").clone();
+    novaConta.removeAttr("id");
     
-    // Atualiza o número da conta
-    novaConta.find(".conta-numero-label").text(`Conta FGTS ${contasCount + 1}`);
+    // Atualizar o número da conta
+    novaConta.find(".conta-numero-label").text(`Conta FGTS ${contasExistentes + 1}`);
     
-    // Adiciona ao container
-    container.append(novaConta);
+    // Exibir a nova conta com animação
+    novaConta.css('display', 'none');
+    contasContainer.append(novaConta);
+    novaConta.fadeIn(300);
     
-    // Atualiza o contador
-    proponenteCard.find(".contas-counter").text(contasCount + 1);
+    // Atualizar o contador
+    proponenteCard.find(".contas-counter").text(contasExistentes + 1);
     
-    // Atualiza botões de remoção
-    atualizarBotoesRemoverConta(container);
+    // Atualizar botões de remoção
+    atualizarBotoesRemoverConta(contasContainer);
+    
+    // Marcar o formulário como modificado
+    marcarFormularioModificado();
+    
+    // Inicializar tooltips para os novos elementos
+    inicializarTooltips();
+    
+    return novaConta;
 }
 
-// Remove uma conta FGTS
+/**
+ * Remove uma conta FGTS
+ */
 function removerContaFGTS(btn) {
     const contaCard = $(btn).closest(".conta-fgts-card");
-    const container = contaCard.parent();
-    const proponenteCard = container.closest(".proponente-card");
+    const contasContainer = contaCard.parent();
+    const proponenteCard = contasContainer.closest(".card");
     
-    contaCard.remove();
-    
-    // Renumera as contas
-    container.find(".conta-fgts-card").each(function(index) {
-        $(this).find(".conta-numero-label").text(`Conta FGTS ${index + 1}`);
+    // Animação de remoção
+    contaCard.fadeOut(300, function() {
+        $(this).remove();
+        
+        // Renumerar contas
+        let contaCounter = 0;
+        contasContainer.find(".conta-fgts-card").each(function() {
+            contaCounter++;
+            $(this).find(".conta-numero-label").text(`Conta FGTS ${contaCounter}`);
+        });
+        
+        // Atualizar contador
+        const contasCount = contasContainer.children().length;
+        proponenteCard.find(".contas-counter").text(contasCount);
+        
+        // Atualizar botões de remoção
+        atualizarBotoesRemoverConta(contasContainer);
+        
+        // Marcar o formulário como modificado
+        marcarFormularioModificado();
     });
-    
-    // Atualiza o contador
-    const novoTotal = container.children().length;
-    proponenteCard.find(".contas-counter").text(novoTotal);
-    
-    // Atualiza botões de remoção
-    atualizarBotoesRemoverConta(container);
 }
 
-// Atualiza a visibilidade dos botões de remoção de contas
-function atualizarBotoesRemoverConta(container) {
-    if (container.children().length <= 1) {
-        container.find(".remover-conta-btn").hide();
+/**
+ * Atualiza a visibilidade dos botões de remoção de contas
+ */
+function atualizarBotoesRemoverConta(contasContainer) {
+    const contas = contasContainer.children();
+    
+    if (contas.length <= 1) {
+        contas.find(".remover-conta-btn").hide();
     } else {
-        container.find(".remover-conta-btn").show();
+        contas.find(".remover-conta-btn").show();
     }
 }
 
-// Coleta os dados do formulário para envio
-function submitForm() {
-    // Cria o payload para envio
-    const payload = {
-        // Dados gerais (já devem estar sendo coletados pelo seu JS principal)
-        botType: $("input[name='botType']:checked").val(),
-        dealId: $("#dealId").text(),
-        agencia: $("#agenciaVinculada").val(),
-        contrato: $("#contratoFinanciamento").val(),
-        matricula: $("#matriculaImovel").val(),
-        tipoComplemento: $("#tipoComplemento").val(),
-        aptoCasa: $("#numeroComplemento").val(),
-        blocoTorre: $("#blocoTorre").val(),
-        bairro: $("#bairro").val(),
-        numeroContatoFGTS: $("#protocoloFGTS").val(),
-        // Adiciona array de pessoas
-        pessoas: []
-    };
+/**
+ * Formata um CPF
+ */
+function formatarCPF(input) {
+    let value = $(input).val().replace(/\D/g, '');
     
-    // Coleta dados dos proponentes e suas contas
-    $(".proponente-card:visible").each(function() {
+    if (value.length > 11) {
+        value = value.substring(0, 11);
+    }
+    
+    // Aplica a máscara
+    if (value.length > 9) {
+        value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
+    } else if (value.length > 6) {
+        value = value.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
+    } else if (value.length > 3) {
+        value = value.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
+    }
+    
+    $(input).val(value);
+}
+
+/**
+ * Formata valor monetário
+ */
+function formatarMoeda(input) {
+    let value = $(input).val();
+    
+    if (!value) return;
+    
+    // Converte para número
+    const numValue = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.'));
+    
+    if (isNaN(numValue)) {
+        $(input).val('');
+    } else {
+        // Formata com duas casas decimais
+        $(input).val(numValue.toFixed(2));
+    }
+}
+
+/**
+ * Mostra um alerta temporário
+ */
+function mostrarAlerta(mensagem, tipo = 'info') {
+    const alertEl = $('<div>')
+        .addClass(`alert alert-${tipo} alert-dismissible fade show`)
+        .attr('role', 'alert')
+        .html(`
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `);
+    
+    // Adiciona o alerta na página
+    $("#status-envio").html(alertEl).removeClass('d-none');
+    
+    // Remove após 3 segundos
+    setTimeout(() => {
+        alertEl.alert('close');
+    }, 3000);
+}
+
+/**
+ * Marca o formulário como modificado para salvar automaticamente
+ */
+function marcarFormularioModificado() {
+    if (window.state) {
+        window.state.formModified = true;
+    }
+}
+
+/**
+ * Coleta os dados de proponentes e contas FGTS para o payload
+ * Esta função deve ser chamada pelo gatherFormData no código principal
+ */
+function coletarDadosProponentesEContas() {
+    const pessoas = [];
+    
+    // Percorre cada proponente
+    $("#proponentesContainer .card").each(function() {
         const proponenteCard = $(this);
         
         const pessoa = {
@@ -174,8 +317,8 @@ function submitForm() {
             contas: []
         };
         
-        // Coleta dados das contas FGTS
-        proponenteCard.find(".conta-fgts-card").each(function() {
+        // Percorre cada conta FGTS deste proponente
+        proponenteCard.find(".contas-fgts-container .conta-fgts-card").each(function() {
             const contaCard = $(this);
             
             const conta = {
@@ -190,11 +333,11 @@ function submitForm() {
             pessoa.contas.push(conta);
         });
         
-        payload.pessoas.push(pessoa);
+        pessoas.push(pessoa);
     });
     
-    console.log("Payload completo:", payload);
-    
-    // A partir daqui, integre com sua função de envio existente
-    // enviarSolicitacao(payload);
+    return pessoas;
 }
+
+// Exportando a função para uso no debito-fgts.js
+window.coletarDadosProponentesEContas = coletarDadosProponentesEContas;
