@@ -2,8 +2,7 @@
  * Módulo de Débito FGTS - Sistema de Análise de Crédito
  * Versão 2.1.5
  * 
- * Integração com n8n e bots FGTS para processamento e geração de DAMP
- * (Documento de Autorização para Movimentação da Conta Vinculada do FGTS)
+ * Sistema reorganizado com fluxo de wizard para melhor experiência do usuário
  */
 $(document).ready(function() {
     // Configurações
@@ -82,31 +81,10 @@ $(document).ready(function() {
         state.selectedBotType = botType;
         
         // Atualiza mensagem de tempo estimado
-        $('#estimated-time').text(config.botProcessingTimes[botType] || '3-5');
+        $('#estimated-processing-time').text(config.botProcessingTimes[botType] || '3-5');
         
         // Marca o formulário como modificado
         state.formModified = true;
-    });
-
-    // Manipulador de envio do formulário
-    $('#form-debito-fgts').on('submit', function(event) {
-        event.preventDefault();
-        
-        // Valida o formulário
-        if (!validateForm()) {
-            showStatus('Por favor, corrija os erros no formulário antes de enviar.', 'danger');
-            return;
-        }
-        
-        // Coleta os dados
-        const payload = gatherFormData();
-        
-        // Confirmação final antes do envio
-        const botName = $('.bot-option.selected').find('h6').text();
-        if (confirm(`Deseja gerar a DAMP utilizando o processador "${botName}"?`)) {
-            // Envia os dados
-            sendToN8N(payload);
-        }
     });
 
     /**
@@ -144,6 +122,9 @@ $(document).ready(function() {
         
         // Inicializa tooltips
         initTooltips();
+        
+        // Exporta a função de envio para o wizard
+        window.submitForm = submitForm;
     }
 
     /**
@@ -260,8 +241,11 @@ $(document).ready(function() {
         $('#fgtsMatriculaImovel').val(getPropertyStringValue(deal, 'FieldKey_MatriculaImovel'));
         $('#fgtsBairro').val(getPropertyStringValue(deal, 'FieldKey_Bairro'));
         
-        // Pré-preenche o primeiro proponente se os dados existirem
-        populateFirstProponent(deal);
+        // Prepara os dados para o primeiro proponente (será criado em proponentes-fgts.js)
+        window.primeiroProponenteData = {
+            nome: deal.Contact?.Name || '',
+            cpf: cpfProp?.StringValue || ''
+        };
     }
     
     /**
@@ -270,32 +254,6 @@ $(document).ready(function() {
     function getPropertyStringValue(deal, fieldKey) {
         const prop = deal?.OtherProperties?.find(p => p.FieldKey === fieldKey);
         return prop?.StringValue || '';
-    }
-    
-    /**
-     * Pré-preenche o primeiro proponente com os dados do contato principal
-     */
-    function populateFirstProponent(deal) {
-        if (!deal || !deal.Contact) return;
-        
-        // Aguarda até que o primeiro proponente esteja disponível
-        const checkForProponenteCard = setInterval(() => {
-            const firstProponenteCard = $("#proponentesContainer .proponente-card").first();
-            
-            if (firstProponenteCard.length > 0) {
-                clearInterval(checkForProponenteCard);
-                
-                // Preenche os dados do contato principal
-                firstProponenteCard.find(".proponente-nome").val(deal.Contact.Name || '');
-                
-                // CPF
-                const cpfPropertyKey = "FieldKey_CPF";
-                const cpfProp = deal.Contact.OtherProperties?.find(prop => prop.FieldKey === cpfPropertyKey);
-                if (cpfProp?.StringValue) {
-                    firstProponenteCard.find(".proponente-cpf").val(cpfProp.StringValue);
-                }
-            }
-        }, 100);
     }
     
     /**
@@ -357,41 +315,9 @@ $(document).ready(function() {
                     blocoComplemento: $('#fgtsBlocoComplemento').val(),
                     bairro: $('#fgtsBairro').val()
                 },
-                proponentes: []
+                proponentes: window.estado.proponentes,
+                contasFGTS: window.estado.contasFGTS
             };
-            
-            // Coleta dados dos proponentes e suas contas
-            $("#proponentesContainer .proponente-card").each(function() {
-                const proponenteCard = $(this);
-                
-                const proponente = {
-                    nome: proponenteCard.find(".proponente-nome").val(),
-                    cpf: proponenteCard.find(".proponente-cpf").val(),
-                    pis: proponenteCard.find(".proponente-pis").val(),
-                    nascimento: proponenteCard.find(".proponente-nascimento").val(),
-                    carteira: proponenteCard.find(".proponente-carteira").val(),
-                    serie: proponenteCard.find(".proponente-serie").val(),
-                    contas: []
-                };
-                
-                // Coleta dados das contas
-                proponenteCard.find(".contas-fgts-container .conta-fgts-card").each(function() {
-                    const contaCard = $(this);
-                    
-                    const conta = {
-                        situacao: contaCard.find(".conta-situacao").val(),
-                        estabelecimento: contaCard.find(".conta-estabelecimento").val(),
-                        numero: contaCard.find(".conta-numero").val(),
-                        sureg: contaCard.find(".conta-sureg").val(),
-                        valor: contaCard.find(".conta-valor").val(),
-                        empregador: contaCard.find(".conta-empregador").val()
-                    };
-                    
-                    proponente.contas.push(conta);
-                });
-                
-                formData.proponentes.push(proponente);
-            });
             
             // Salva no localStorage
             localStorage.setItem(`fgts_form_${state.dealId}`, JSON.stringify(formData));
@@ -437,51 +363,20 @@ $(document).ready(function() {
                 state.selectedBotType = formData.selectedBotType;
                 $('#selectedBotType').val(formData.selectedBotType);
                 $(`.bot-option[data-bot-type="${formData.selectedBotType}"]`).addClass('selected');
+                $('#estimated-processing-time').text(config.botProcessingTimes[formData.selectedBotType] || '3-5');
             }
             
-            // Remove quaisquer proponentes que tenham sido adicionados automaticamente
-            $("#proponentesContainer").empty();
-            
-            // Carrega proponentes
-            if (formData.proponentes && formData.proponentes.length > 0) {
-                formData.proponentes.forEach(proponenteData => {
-                    // Adiciona um novo proponente
-                    const proponenteCard = adicionarProponente();
-                    
-                    // Preenche os dados do proponente
-                    proponenteCard.find(".proponente-nome").val(proponenteData.nome || '');
-                    proponenteCard.find(".proponente-cpf").val(proponenteData.cpf || '');
-                    proponenteCard.find(".proponente-pis").val(proponenteData.pis || '');
-                    proponenteCard.find(".proponente-nascimento").val(proponenteData.nascimento || '');
-                    proponenteCard.find(".proponente-carteira").val(proponenteData.carteira || '');
-                    proponenteCard.find(".proponente-serie").val(proponenteData.serie || '');
-                    
-                    // Remove a primeira conta adicionada automaticamente
-                    proponenteCard.find(".contas-fgts-container").empty();
-                    
-                    // Carrega as contas
-                    if (proponenteData.contas && proponenteData.contas.length > 0) {
-                        proponenteData.contas.forEach(contaData => {
-                            // Adiciona uma nova conta
-                            const contaCard = adicionarContaFGTS(proponenteCard);
-                            
-                            // Preenche os dados da conta
-                            contaCard.find(".conta-situacao").val(contaData.situacao || '');
-                            contaCard.find(".conta-estabelecimento").val(contaData.estabelecimento || '');
-                            contaCard.find(".conta-numero").val(contaData.numero || '');
-                            contaCard.find(".conta-sureg").val(contaData.sureg || '');
-                            contaCard.find(".conta-valor").val(contaData.valor || '');
-                            contaCard.find(".conta-empregador").val(contaData.empregador || '');
-                        });
-                    } else {
-                        // Adiciona pelo menos uma conta vazia
-                        adicionarContaFGTS(proponenteCard);
-                    }
-                });
-            } else {
-                // Se não houver proponentes salvos, adiciona um proponente vazio
-                adicionarProponente();
+            // Carrega proponentes e contas FGTS
+            if (formData.proponentes) {
+                window.estado.proponentes = formData.proponentes;
             }
+            
+            if (formData.contasFGTS) {
+                window.estado.contasFGTS = formData.contasFGTS;
+            }
+            
+            // Os proponentes serão recriados na interface quando o usuário 
+            // chegar à etapa correspondente no wizard
             
             showStatus('Seus dados não enviados foram restaurados.', 'info');
             
@@ -504,221 +399,54 @@ $(document).ready(function() {
             return false;
         }
     }
+
+    /**
+     * Função principal de envio do formulário
+     */
+    function submitForm() {
+        if (state.isSubmitting) return;
+        
+        // Coleta os dados
+        const payload = gatherFormData();
+        
+        // Validação extra: verificar se a soma dos valores das contas FGTS corresponde ao total
+        validateFGTSValues(payload)
+            .then(isValid => {
+                if (isValid) {
+                    // Inicia o envio
+                    sendToN8N(payload);
+                }
+            });
+    }
     
     /**
-     * Valida o formulário antes de enviar
+     * Valida a soma dos valores das contas FGTS
      */
-    function validateForm() {
-        let isValid = true;
-        let firstInvalidField = null;
+    async function validateFGTSValues(payload) {
+        const valorTotalFGTS = parseFloat(payload.valorFGTS) || 0;
         
-        // Valida se um tipo de bot foi selecionado
-        if (!state.selectedBotType) {
-            showStatus('Selecione um tipo de processamento antes de continuar.', 'danger');
-            $('.bot-selector').addClass('border border-danger rounded p-2');
-            setTimeout(() => {
-                $('.bot-selector').removeClass('border border-danger rounded p-2');
-            }, 1500);
-            return false;
-        }
-        
-        // Valida campos obrigatórios gerais
-        const camposObrigatorios = [
-            { id: 'fgtsAgencia', label: 'Agência Vinculada' },
-            { id: 'fgtsContrato', label: 'Nº Contrato Financiamento' },
-            { id: 'fgtsMatriculaImovel', label: 'Matrícula do Imóvel' },
-            { id: 'fgtsTipoComplemento', label: 'Tipo Complemento Imóvel' }
-        ];
-        
-        for (const campo of camposObrigatorios) {
-            const elemento = $(`#${campo.id}`);
-            const valor = elemento.val();
-            
-            if (!valor || valor === '') {
-                markFieldAsInvalid(elemento, `O campo ${campo.label} é obrigatório`);
-                isValid = false;
-                
-                if (!firstInvalidField) {
-                    firstInvalidField = elemento;
-                }
-            } else {
-                markFieldAsValid(elemento);
-            }
-        }
-        
-        // Valida dados dos proponentes
-        $("#proponentesContainer .proponente-card").each(function() {
-            const proponenteCard = $(this);
-            const proponenteNumero = proponenteCard.find('.proponente-numero').text();
-            
-            // Verifica campos obrigatórios do proponente
-            const camposProponente = [
-                { selector: '.proponente-nome', label: 'Nome Completo' },
-                { selector: '.proponente-cpf', label: 'CPF' },
-                { selector: '.proponente-pis', label: 'PIS/PASEP' },
-                { selector: '.proponente-nascimento', label: 'Data de Nascimento' },
-                { selector: '.proponente-carteira', label: 'Nº Carteira Trabalho' },
-                { selector: '.proponente-serie', label: 'Série Carteira Trabalho' }
-            ];
-            
-            for (const campo of camposProponente) {
-                const elemento = proponenteCard.find(campo.selector);
-                const valor = elemento.val();
-                
-                if (!valor || valor === '') {
-                    markFieldAsInvalid(elemento, `${campo.label} é obrigatório`);
-                    isValid = false;
-                    
-                    if (!firstInvalidField) {
-                        firstInvalidField = elemento;
-                    }
-                } else {
-                    markFieldAsValid(elemento);
-                }
-            }
-            
-            // Valida CPF
-            const cpfInput = proponenteCard.find('.proponente-cpf');
-            const cpf = cpfInput.val().replace(/\D/g, '');
-            
-            if (cpf && !isValidCPF(cpf)) {
-                markFieldAsInvalid(cpfInput, 'CPF inválido');
-                isValid = false;
-                
-                if (!firstInvalidField) {
-                    firstInvalidField = cpfInput;
-                }
-            }
-            
-            // Valida contas FGTS
-            const contasContainer = proponenteCard.find('.contas-fgts-container');
-            const contas = contasContainer.find('.conta-fgts-card');
-            
-            if (contas.length === 0) {
-                showStatus(`O proponente ${proponenteNumero} precisa ter pelo menos uma conta FGTS.`, 'danger');
-                isValid = false;
-                
-                const addButton = proponenteCard.find('.adicionar-conta-btn');
-                addButton.addClass('btn-danger').removeClass('btn-outline-primary');
-                setTimeout(() => {
-                    addButton.removeClass('btn-danger').addClass('btn-outline-primary');
-                }, 1500);
-                
-                return;
-            }
-            
-            // Valida cada conta FGTS
-            contas.each(function() {
-                const contaCard = $(this);
-                const contaNumero = contaCard.find('.conta-numero-label').text();
-                
-                const camposConta = [
-                    { selector: '.conta-situacao', label: 'Situação da Conta' },
-                    { selector: '.conta-estabelecimento', label: 'Código do Estabelecimento' },
-                    { selector: '.conta-numero', label: 'Código do Empregado' },
-                    { selector: '.conta-sureg', label: 'SUREG' },
-                    { selector: '.conta-valor', label: 'Valor a Debitar' }
-                ];
-                
-                for (const campo of camposConta) {
-                    const elemento = contaCard.find(campo.selector);
-                    const valor = elemento.val();
-                    
-                    if (!valor || valor === '') {
-                        markFieldAsInvalid(elemento, `${campo.label} é obrigatório`);
-                        isValid = false;
-                        
-                        if (!firstInvalidField) {
-                            firstInvalidField = elemento;
-                        }
-                    } else {
-                        markFieldAsValid(elemento);
-                    }
-                }
-                
-                // Valida valor da conta
-                const valorInput = contaCard.find('.conta-valor');
-                const valor = parseFloat(valorInput.val());
-                
-                if (isNaN(valor) || valor <= 0) {
-                    markFieldAsInvalid(valorInput, 'O valor deve ser maior que zero');
-                    isValid = false;
-                    
-                    if (!firstInvalidField) {
-                        firstInvalidField = valorInput;
-                    }
-                }
+        let somaValoresContas = 0;
+        payload.pessoas.forEach(pessoa => {
+            pessoa.contas.forEach(conta => {
+                somaValoresContas += parseFloat(conta.valor) || 0;
             });
         });
         
-        // Foca no primeiro campo inválido encontrado
-        if (firstInvalidField) {
-            firstInvalidField.focus();
-            
-            // Rola para o primeiro campo inválido
-            $('html, body').animate({
-                scrollTop: firstInvalidField.offset().top - 150
-            }, 500);
+        // Tolerância de centavos para evitar problemas de arredondamento
+        const diferenca = Math.abs(valorTotalFGTS - somaValoresContas);
+        
+        if (diferenca > 0.02) {  // tolerância de 2 centavos
+            return new Promise(resolve => {
+                // Pergunta ao usuário se deseja continuar mesmo com a diferença
+                if (confirm(`O valor total de FGTS (R$ ${valorTotalFGTS.toFixed(2)}) não corresponde à soma dos valores das contas (R$ ${somaValoresContas.toFixed(2)}). Deseja continuar mesmo assim?`)) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
         }
         
-        return isValid;
-    }
-    
-    /**
-     * Marca um campo como inválido
-     */
-    function markFieldAsInvalid(field, message) {
-        $(field).addClass('is-invalid').removeClass('is-valid');
-        
-        // Verifica se já existe mensagem de erro
-        let feedback = $(field).siblings('.invalid-feedback');
-        if (feedback.length === 0) {
-            // Cria elemento de feedback
-            feedback = $('<div class="invalid-feedback"></div>');
-            $(field).after(feedback);
-        }
-        
-        feedback.text(message);
-    }
-    
-    /**
-     * Marca um campo como válido
-     */
-    function markFieldAsValid(field) {
-        $(field).removeClass('is-invalid').addClass('is-valid');
-    }
-    
-    /**
-     * Valida um CPF
-     */
-    function isValidCPF(cpf) {
-        // CPF deve ter 11 dígitos
-        if (cpf.length !== 11) return false;
-        
-        // Verifica se todos os dígitos são iguais
-        if (/^(\d)\1+$/.test(cpf)) return false;
-        
-        // Validação do primeiro dígito verificador
-        let sum = 0;
-        for (let i = 0; i < 9; i++) {
-            sum += parseInt(cpf.charAt(i)) * (10 - i);
-        }
-        
-        let remainder = sum % 11;
-        const dv1 = remainder < 2 ? 0 : 11 - remainder;
-        
-        if (parseInt(cpf.charAt(9)) !== dv1) return false;
-        
-        // Validação do segundo dígito verificador
-        sum = 0;
-        for (let i = 0; i < 10; i++) {
-            sum += parseInt(cpf.charAt(i)) * (11 - i);
-        }
-        
-        remainder = sum % 11;
-        const dv2 = remainder < 2 ? 0 : 11 - remainder;
-        
-        return parseInt(cpf.charAt(10)) === dv2;
+        return Promise.resolve(true);
     }
     
     /**
@@ -788,25 +516,6 @@ $(document).ready(function() {
     async function sendToN8N(payload) {
         if (state.isSubmitting) return;
         
-        // Validação extra: verificar se a soma dos valores das contas FGTS corresponde ao total
-        const valorTotalFGTS = parseFloat(payload.valorFGTS) || 0;
-        
-        let somaValoresContas = 0;
-        payload.pessoas.forEach(pessoa => {
-            pessoa.contas.forEach(conta => {
-                somaValoresContas += parseFloat(conta.valor) || 0;
-            });
-        });
-        
-        // Tolerância de centavos para evitar problemas de arredondamento
-        const diferenca = Math.abs(valorTotalFGTS - somaValoresContas);
-        
-        if (diferenca > 0.02) {  // tolerância de 2 centavos
-            if (!confirm(`O valor total de FGTS (R$ ${valorTotalFGTS.toFixed(2)}) não corresponde à soma dos valores das contas (R$ ${somaValoresContas.toFixed(2)}). Deseja continuar mesmo assim?`)) {
-                return;
-            }
-        }
-        
         state.isSubmitting = true;
         
         // Prepara a URL do webhook com base no tipo de bot selecionado
@@ -869,12 +578,6 @@ $(document).ready(function() {
         
         // Exibe mensagem de sucesso
         showStatus('DAMP gerada com sucesso! Os documentos estão disponíveis para download.', 'success');
-        
-        // Atualiza o status da operação
-        $('#operation-status')
-            .removeClass('pending error')
-            .addClass('success')
-            .html('<i class="fas fa-check-circle"></i> Processado');
             
         // Limpa dados salvos no localStorage após envio bem-sucedido
         clearSavedData();
@@ -899,12 +602,6 @@ $(document).ready(function() {
         // Exibe mensagem de erro
         showStatus(`Erro ao gerar DAMP: ${error.message || 'Falha na comunicação com o servidor'}. Por favor, tente novamente.`, 'danger');
         
-        // Atualiza o status da operação
-        $('#operation-status')
-            .removeClass('pending success')
-            .addClass('error')
-            .html('<i class="fas fa-times-circle"></i> Erro no processamento');
-            
         // Interrompe simulação de progresso
         clearInterval(state.processingTimer);
         
@@ -1042,11 +739,8 @@ $(document).ready(function() {
      * Desabilita o formulário após envio bem-sucedido
      */
     function disableForm() {
-        $('#form-debito-fgts input, #form-debito-fgts select, #form-debito-fgts button:not(#voltarDashboardBtn)').prop('disabled', true);
-        $('.bot-option').css({
-            'pointer-events': 'none',
-            'opacity': '0.7'
-        });
+        $('#wizard-navigation a').css('pointer-events', 'none');
+        $('#prevStepBtn, #nextStepBtn').prop('disabled', true);
         
         // Mostra mensagem sugerindo voltar ao dashboard
         showStatus('Para iniciar um novo débito FGTS, volte ao Dashboard.', 'info', false);
